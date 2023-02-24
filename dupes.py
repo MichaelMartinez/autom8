@@ -1,88 +1,69 @@
+# Author: Michael Martinez
+# Date: 02/24/2023
 import os
 import tkinter as tk
-from tkinter import filedialog
-from collections import defaultdict
-import hashlib
+from tkinter import messagebox
+# import the file dialog module
+import tkinter.filedialog as filedialog
 
+# function to find duplicates in two directories
+def find_duplicates(dir1, dir2):
+    duplicates = set()
+    dir1_files = set(os.listdir(dir1))
+    for filename in os.listdir(dir2):
+        if filename in dir1_files:
+            duplicates.add(filename)
+    return duplicates
 
-class DuplicateFinder(tk.Frame):
-    def __init__(self, master=None):
-        super().__init__(master)
-        self.master = master
-        self.master.title("Duplicate Finder")
-        self.pack()
-        self.create_widgets()
+# function to display duplicates in the GUI
+def display_duplicates():
+    dir1 = dir1_entry.get()
+    dir2 = dir2_entry.get()
+    duplicates = find_duplicates(dir1, dir2)
+    if duplicates:
+        duplicates_listbox.delete(0, tk.END)
+        for filename in duplicates:
+            duplicates_listbox.insert(tk.END, filename)
+    else:
+        messagebox.showinfo("No duplicates found")
 
-    def create_widgets(self):
-        self.folder1_button = tk.Button(
-            self, text="Select Folder 1", command=self.select_folder1)
-        self.folder1_button.pack(side="top")
+# create the tkinter window
+window = tk.Tk()
+window.title("Duplicate Finder")
+window.geometry("1000x1000")
 
-        self.folder1_label = tk.Label(self, text="No folder selected")
-        self.folder1_label.pack(side="top")
+# create the directory input widgets
+dir1_label = tk.Label(window, text="Directory 1:")
+dir1_label.pack()
+dir1_entry = tk.Entry(window)
+dir1_entry.pack()
 
-        self.folder2_button = tk.Button(
-            self, text="Select Folder 2", command=self.select_folder2)
-        self.folder2_button.pack(side="top")
+# create the "Select Directory 1" button
+dir1_button = tk.Button(window, text="Select Directory 1", command=lambda: dir1_entry.insert(0, filedialog.askdirectory()))
+dir1_button.pack()
 
-        self.folder2_label = tk.Label(self, text="No folder selected")
-        self.folder2_label.pack(side="top")
+dir2_label = tk.Label(window, text="Directory 2:")
+dir2_label.pack()
+dir2_entry = tk.Entry(window)
+dir2_entry.pack()
 
-        self.compare_button = tk.Button(
-            self, text="Compare", command=self.compare_folders)
-        self.compare_button.pack(side="top")
+# create the "Select Directory 2" button
+dir2_button = tk.Button(window, text="Select Directory 2", command=lambda: dir2_entry.insert(0, filedialog.askdirectory()))
+dir2_button.pack()
 
-        self.result_label = tk.Label(self, text="")
-        self.result_label.pack(side="top")
+# create the button to find duplicates
+find_button = tk.Button(window, text="Find Duplicates", command=display_duplicates)
+find_button.pack()
 
-    def select_folder1(self):
-        folder_path = filedialog.askdirectory()
-        self.folder1_label.config(text=folder_path)
+# create the listbox to display duplicates
+duplicates_listbox = tk.Listbox(window)
+duplicates_listbox.pack(fill=tk.BOTH, expand=True)
 
-    def select_folder2(self):
-        folder_path = filedialog.askdirectory()
-        self.folder2_label.config(text=folder_path)
+# make the listbox scrollable
+scrollbar = tk.Scrollbar(duplicates_listbox)
+scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+duplicates_listbox.config(yscrollcommand=scrollbar.set)
+scrollbar.config(command=duplicates_listbox.yview)
 
-    def compare_folders(self):
-        folder1_path = self.folder1_label.cget("text")
-        folder2_path = self.folder2_label.cget("text")
-
-        if not folder1_path or not folder2_path:
-            self.result_label.config(text="Please select both folders")
-            return
-
-        files_by_size = defaultdict(list)
-
-        for folder_path in [folder1_path, folder2_path]:
-            for root, dirs, files in os.walk(folder_path):
-                for file in files:
-                    file_path = os.path.join(root, file)
-                    file_size = os.path.getsize(file_path)
-                    files_by_size[file_size].append(file_path)
-
-        duplicate_files = []
-
-        for size, files in files_by_size.items():
-            if len(files) > 1:
-                md5_by_file = defaultdict(str)
-                for file_path in files:
-                    with open(file_path, "rb") as f:
-                        md5_by_file[file_path] = hashlib.md5(
-                            f.read()).hexdigest()
-                md5_by_hash = defaultdict(list)
-                for file_path, md5 in md5_by_file.items():
-                    md5_by_hash[md5].append(file_path)
-                for md5, files in md5_by_hash.items():
-                    if len(files) > 1:
-                        duplicate_files.extend(files)
-
-        if len(duplicate_files) == 0:
-            self.result_label.config(text="No duplicate files found")
-        else:
-            self.result_label.config(
-                text=f"Duplicate files:\n{', '.join(duplicate_files)}")
-
-
-root = tk.Tk()
-app = DuplicateFinder(master=root)
-app.mainloop()
+# start the tkinter event loop
+window.mainloop()
