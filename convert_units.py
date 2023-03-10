@@ -59,28 +59,29 @@ class ConvertUnits:
     # create a method to convert the units
 
     def convert(self):
-        # create list of units
-        units = ["inches", "feet", "yards", "miles",
-                 "millimeters", "centimeters", "meters", "kilometers"]
+        # create list of units using shortend names for length, volume and mass
+        units = ["m", "cm", "mm", "km", "in", "ft", "yd", "mi",
+                 "L", "mL", "gal", "fl oz", "kg", "g", "lb", "oz"]
         # create list of conversion factors
-        conversionFactors = [1, 12, 36, 63360,
-                             0.0393701, 0.393701, 39.3701, 39370.1]
-        # create a variable to store the value
+        conversionFactors = [1, 0.01, 0.001, 1000, 0.0254, 0.3048, 0.9144, 1609.34,
+                             0.001, 0.000001, 0.00378541, 0.0000295735, 1, 0.001, 0.453592, 0.0283495]
+        # get the value from the value entry box
         value = float(self.value.get())
-        # create a variable to store the unit
+        # get the unit from the unit entry box
         unit = self.unit.get()
-        # create a variable to store the unit to convert to
+        # get the unit to convert to from the unit to convert to entry box
         unitToConvertTo = self.unitToConvertTo.get()
-        # create a variable to store the index of the unit
+        # get the index of the unit in the units list
         unitIndex = units.index(unit)
-        # create a variable to store the index of the unit to convert to
+        # get the index of the unit to convert to in the units list
         unitToConvertToIndex = units.index(unitToConvertTo)
-        # create a variable to store the conversion factor
-        conversionFactor = conversionFactors[unitIndex] / \
-            conversionFactors[unitToConvertToIndex]
-        # create a variable to store the converted value
-        convertedValue = value * conversionFactor
-        # display the converted value
+        # get the conversion factor for the unit
+        conversionFactor = conversionFactors[unitIndex]
+        # get the conversion factor for the unit to convert to
+        conversionFactorToConvertTo = conversionFactors[unitToConvertToIndex]
+        # convert the value to the unit to convert to
+        convertedValue = value * conversionFactor / conversionFactorToConvertTo
+        # set the converted value label to the converted value
         self.convertedValue.set(convertedValue)
 
     # create a method to clear the entry boxes
