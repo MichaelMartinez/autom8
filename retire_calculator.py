@@ -39,7 +39,7 @@ for label in input_labels:
 # create a scrolling text box for output
 # ======================================
 
-output_box = scrolledtext.ScrolledText(root, width=50, height=10)
+output_box = scrolledtext.ScrolledText(root, width=110, height=30, wrap=tk.WORD)
 output_box.pack()
 
 #global variables
@@ -87,8 +87,11 @@ def calculate_pension():
     # display the output in the scrolling text box
     output_box.delete('1.0', tk.END)
     output_box.insert(tk.INSERT, f"Monthly Benefit for 20 years: ${monthly_benefit:.2f}\n")
+    output_box.insert(tk.INSERT, f"\n===================================================\n")
     output_box.insert(tk.INSERT, f"Total Benefit: ${total_benefit:.2f} over {retirement_years} years\n")
+    output_box.insert(tk.INSERT, f"\n===================================================\n")
     output_box.insert(tk.INSERT, f"Total with 5 years of Drop: ${total_benefit_with_drop:.2f}\n")
+    output_box.insert(tk.INSERT, f"\n===================================================\n")
 
 def calculate_pension_no_drop():
     global monthly_benefit, retirement_years, total_benefit, monthly_deposit, balance, interest_rate, num_of_years, num_of_months, monthly_wage, total_wage
@@ -99,10 +102,15 @@ def calculate_pension_no_drop():
     monthly_wage = hourly_wage * hours_per_week * 4
     total_wage = monthly_wage * 12 * years_worked
     # calculate the difference between the two scenarios
-    diff_monthly = monthly_benefit - monthly_wage
+    
     diff_drop = balance - total_wage
     monthly_benefit_25 = 0.025 * 25 * highest_salary / 12
     monthly_benefit_30 = 0.025 * 30 * highest_salary / 12
+    print(monthly_benefit)
+    print(monthly_wage)
+    print(monthly_benefit_25)
+    job_plus_pension = monthly_benefit + monthly_wage
+    diff_monthly = job_plus_pension - monthly_benefit_25
     total_benefit = monthly_benefit * 12 * retirement_years
     total_benefit_25 = monthly_benefit_25 * 12 * retirement_years
     total_benefit_30 = monthly_benefit_30 * 12 * retirement_years
@@ -111,12 +119,19 @@ def calculate_pension_no_drop():
 
     # display the output in the scrolling text box
     output_box.insert(tk.INSERT, f"\nMonthly Wage at menial job: ${monthly_wage:.2f}\n")
-    output_box.insert(tk.INSERT, f"Total Wage at menial job: ${total_wage:.2f}\n")
-    output_box.insert(tk.INSERT, f"Difference in Monthly Income: ${diff_monthly:.2f}\n")
-    output_box.insert(tk.INSERT, f"Difference in Drop Amount: ${diff_drop:.2f}\n")
+    output_box.insert(tk.INSERT, f"\n===================================================\n")
+    output_box.insert(tk.INSERT, f"Total Wage at menial job: ${total_wage:.2f}\n after {years_worked} years\n")
+    output_box.insert(tk.INSERT, f"\n===================================================\n")
+    output_box.insert(tk.INSERT, f"Difference in Monthly Income between regular job + pension (${monthly_wage:.2f} + {monthly_benefit:.2f}) and staying on FD until 25 years ({monthly_benefit_25:.2f}): ${diff_monthly:.2f}\n")
+    output_box.insert(tk.INSERT, f"\n===================================================\n")
+    output_box.insert(tk.INSERT, f"Difference in 5 years at drop (${balance:.2f}) and wages earned working ({total_wage}): ${diff_drop:.2f}\n")
+    output_box.insert(tk.INSERT, f"\n===================================================\n")
     output_box.insert(tk.INSERT, f"Total Benefit for 25 Years service: ${total_benefit_25:.2f} with {retirement_years} years of retirement\n")
+    output_box.insert(tk.INSERT, f"\n===================================================\n")
     output_box.insert(tk.INSERT, f"Difference in Total Benefit for 25 Years service compared to 20: ${diff_total_25:.2f}\n")
+    output_box.insert(tk.INSERT, f"\n===================================================\n")
     output_box.insert(tk.INSERT, f"Total Benefit for 30 Years service: ${total_benefit_30:.2f} with {retirement_years} years of retirement\n")
+    output_box.insert(tk.INSERT, f"\n===================================================\n")
     output_box.insert(tk.INSERT, f"Difference in Total Benefit for 30 Years service compared to 20: ${diff_total_30:.2f}\n")
 
 #create buttons to calculate the pension benefits
