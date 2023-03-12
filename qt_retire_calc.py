@@ -104,12 +104,12 @@ class PensionCalculator(QMainWindow):
 
     def initTab3(self):
         # create widgets for tab3
-        self.working_years_label = QLabel("Working Years:")
-        self.working_years_combo = QComboBox()
-        self.working_years_combo.addItem("20")
-        self.working_years_combo.addItem("25")
-        self.monthly_pension_label = QLabel("Monthly Pension:")
-        self.monthly_pension_input = QLineEdit()
+        self.monthly_salary_lable = QLabel("Monthly Pension:")
+        self.monthly_salary_lable.setAlignment(Qt.AlignCenter)
+        self.hourly_rate_lable = QLabel("Hourly Rate in Menial Job:")
+        self.hourly_rate_input = QLineEdit()
+        self.hours_per_week_lable = QLabel("How many hours per week can you work:")
+        self.hours_per_week_input = QLineEdit()
 
         self.calculate_compare_button = QPushButton("Calculate")
         self.calculate_compare_button.clicked.connect(self.calculate_compare)
@@ -119,12 +119,11 @@ class PensionCalculator(QMainWindow):
 
         # create layout for tab3
         layout = QVBoxLayout()
-        hbox = QHBoxLayout()
-        hbox.addWidget(self.working_years_label)
-        hbox.addWidget(self.working_years_combo)
-        hbox.addWidget(self.monthly_pension_label)
-        hbox.addWidget(self.monthly_pension_input)
-        layout.addLayout(hbox)
+        layout.addWidget(self.monthly_salary_lable)
+        layout.addWidget(self.hourly_rate_lable)
+        layout.addWidget(self.hourly_rate_input)
+        layout.addWidget(self.hours_per_week_lable)
+        layout.addWidget(self.hours_per_week_input)
         layout.addWidget(self.calculate_compare_button)
         layout.addWidget(self.compare_result_label)
 
@@ -147,6 +146,7 @@ class PensionCalculator(QMainWindow):
             additional_pension = (years - 20) * 0.025 * salary
             total_pension = base_pension + additional_pension
             monthly_pension = total_pension / 12
+            self.monthly_pension = monthly_pension
             self.result_label_20.setText(f"Monthly Benefit: ${monthly_pension:.2f}")
 
             # calculate projected monthly benefit and future value based on CPI
@@ -155,7 +155,9 @@ class PensionCalculator(QMainWindow):
             future_value = projected_monthly_pension * (1 + cpi/12)**(12 * (death_age - age))
             self.result_label_20.setText(self.result_label_20.text() + f"\nProjected Monthly Benefit: ${projected_monthly_pension:.2f}\nFuture Value Based on CPI: ${future_value:.2f}")
             base_pension_25 = (25 * 0.025 * salary) / 12
+            self.base_pension_25 = base_pension_25
             base_pension_30 = (30 * 0.025 * salary) / 12
+            self.base_pension_30 = base_pension_30
             self.result_label_25.setText(f"Monthly Benefit at 25 years of service: ${base_pension_25:.2f}")
             self.result_label_30.setText(f"Monthly Benefit at 30 years of service: ${base_pension_30:.2f}")
 
@@ -193,20 +195,28 @@ class PensionCalculator(QMainWindow):
 
     def calculate_compare(self):
         # retrieve input values
-        working_years = int(self.working_years_combo.currentText())
-        monthly_pension = float(self.monthly_pension_input.text())
-        # calculate equivalent monthly benefit for 25 years of work
-        if working_years == 20:
-            equivalent_months = 25 * 12
-            equivalent_monthly_benefit = monthly_pension / (1 + 0.02 * (25 - 20)) * (1 + 0.02)**(equivalent_months / 12 - 5)
-        elif working_years == 25:
-            equivalent_monthly_benefit = monthly_pension
-        else:
-            equivalent_months = 25 * 12
-            equivalent_monthly_benefit = monthly_pension / (1 + 0.02 * (30 - 20)) * (1 + 0.02)**(equivalent_months / 12 - 5)
+        self.monthly_salary_lable.setText(f"Monthly Pension at 20 years is: ${self.monthly_pension:.2f} and at 25 years is: ${self.base_pension_25:.2f} and at 30 years is: ${self.base_pension_30:.2f}")
+        monthly_salary = self.monthly_pension
+        hourly_rate = float(self.hourly_rate_input.text())
+        hours_per_week = float(self.hours_per_week_input.text())
+
+        # calculate equivalent hourly rate at 20 years
+        equivalent_hourly_rate = monthly_salary / (4 * hours_per_week)
+        difference = equivalent_hourly_rate - hourly_rate
+
+        # calculate equivalent hourly rate to make difference bewteen 20 and 25 years
+        equivalent_hourly_rate_diff = (self.base_pension_25 - monthly_salary) / (4 * hours_per_week)
+        difference_diff = equivalent_hourly_rate_diff - hourly_rate
+
 
         # display result
-        self.compare_result_label.setText(f"To earn an equivalent monthly benefit for 25 years of work, you would need to make ${equivalent_monthly_benefit:.2f} per month in your next job.")
+        if difference <= 0:
+            self.compare_result_label.setText("You are already earning enough to meet or exceed your monthly pension.")
+        else:
+            self.compare_result_label.setText(f"You would need to make at least ${equivalent_hourly_rate:.2f} per hour to meet or exceed your monthly pension in total.\n \
+                                               This is a difference of ${difference:.2f} per hour.\n \
+                                               However, if you retire at 20 years with {monthly_salary:.2f} the equivalent hourly rate to make up the difference between 20 and 25 years is ${equivalent_hourly_rate_diff:.2f} per hour.\n \
+                                               This is a difference of ${difference_diff:.2f} per hour.")
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
