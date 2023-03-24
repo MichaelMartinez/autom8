@@ -26,7 +26,8 @@ root.title("Tucson Fire Pension Calculator")
 # create labels for the input fields
 # ==================================
 
-input_labels = ["Age", "Age of Death", "Highest Salary", "Hourly Wage", "Hours Worked Per Week", "Weeks Worked Per Year", "Years Worked"]
+input_labels = ["Age", "Age of Death", "Highest Salary", "Hourly Wage",
+                "Hours Worked Per Week", "Weeks Worked Per Year", "Years Worked"]
 input_entries = []
 
 for label in input_labels:
@@ -39,10 +40,11 @@ for label in input_labels:
 # create a scrolling text box for output
 # ======================================
 
-output_box = scrolledtext.ScrolledText(root, width=110, height=30, wrap=tk.WORD)
+output_box = scrolledtext.ScrolledText(
+    root, width=110, height=15, wrap=tk.WORD)
 output_box.pack()
 
-#global variables
+# global variables
 monthly_benefit = 0
 total_benefit = 0
 monthly_deposit = 0
@@ -58,6 +60,7 @@ retirement_years = 0
 # create a function to calculate the pension benefit
 # ==================================================
 
+
 def calculate_pension():
     global monthly_benefit, retirement_years, highest_salary, total_benefit, monthly_deposit, balance, interest_rate, num_of_years, num_of_months, monthly_wage, total_wage
     # get the input values from the entry fields
@@ -72,7 +75,7 @@ def calculate_pension():
 
     # calculate the total benefit based on monthly benefit and retirement years
     total_benefit = monthly_benefit * 12 * retirement_years
-    
+
     # calculate the balance after 5 years with monthly deposit and interest rate
     monthly_deposit = monthly_benefit
     balance = 0.0
@@ -83,15 +86,22 @@ def calculate_pension():
         balance += monthly_deposit
         balance *= (1 + interest_rate/12)**(12/12)
     total_benefit_with_drop = total_benefit + balance
-    
+
     # display the output in the scrolling text box
     output_box.delete('1.0', tk.END)
-    output_box.insert(tk.INSERT, f"Monthly Benefit for 20 years: ${monthly_benefit:.2f}\n")
-    output_box.insert(tk.INSERT, f"\n===================================================\n")
-    output_box.insert(tk.INSERT, f"Total Benefit: ${total_benefit:.2f} over {retirement_years} years\n")
-    output_box.insert(tk.INSERT, f"\n===================================================\n")
-    output_box.insert(tk.INSERT, f"Total with 5 years of Drop: ${total_benefit_with_drop:.2f}\n")
-    output_box.insert(tk.INSERT, f"\n===================================================\n")
+    output_box.insert(
+        tk.INSERT, f"Monthly Benefit for 20 years: ${monthly_benefit:.2f}\n")
+    output_box.insert(
+        tk.INSERT, f"\n===================================================\n")
+    output_box.insert(
+        tk.INSERT, f"Total Benefit: ${total_benefit:.2f} over {retirement_years} years\n")
+    output_box.insert(
+        tk.INSERT, f"\n===================================================\n")
+    output_box.insert(
+        tk.INSERT, f"Total with 5 years of Drop: ${total_benefit_with_drop:.2f}\n")
+    output_box.insert(
+        tk.INSERT, f"\n===================================================\n")
+
 
 def calculate_pension_no_drop():
     global monthly_benefit, retirement_years, total_benefit, monthly_deposit, balance, interest_rate, num_of_years, num_of_months, monthly_wage, total_wage
@@ -102,7 +112,7 @@ def calculate_pension_no_drop():
     monthly_wage = hourly_wage * hours_per_week * 4
     total_wage = monthly_wage * 12 * years_worked
     # calculate the difference between the two scenarios
-    
+
     diff_drop = balance - total_wage
     monthly_benefit_25 = 0.025 * 25 * highest_salary / 12
     monthly_benefit_30 = 0.025 * 30 * highest_salary / 12
@@ -112,38 +122,64 @@ def calculate_pension_no_drop():
     job_plus_pension = monthly_benefit + monthly_wage
     diff_monthly = job_plus_pension - monthly_benefit_25
     total_benefit = monthly_benefit * 12 * retirement_years
-    total_benefit_25 = monthly_benefit_25 * 12 * retirement_years
-    total_benefit_30 = monthly_benefit_30 * 12 * retirement_years
+    total_benefit_25 = monthly_benefit_25 * 12 * (retirement_years - 5)
+    twofive_plus_drop = total_benefit + balance
     diff_total_25 = total_benefit_25 - total_benefit
-    diff_total_30 = total_benefit_30 - total_benefit
+    diff_total_20 = (total_benefit + balance) - (total_benefit + total_wage)
+    diff_total_25_drop = (
+        total_benefit_25 - total_benefit) + (balance - total_wage)
 
     # display the output in the scrolling text box
-    output_box.insert(tk.INSERT, f"\nMonthly Wage at menial job: ${monthly_wage:.2f}\n")
-    output_box.insert(tk.INSERT, f"\n===================================================\n")
-    output_box.insert(tk.INSERT, f"Total Wage at menial job: ${total_wage:.2f}\n after {years_worked} years\n")
-    output_box.insert(tk.INSERT, f"\n===================================================\n")
-    output_box.insert(tk.INSERT, f"Difference in Monthly Income between regular job + pension (${monthly_wage:.2f} + {monthly_benefit:.2f}) and staying on FD until 25 years ({monthly_benefit_25:.2f}): ${diff_monthly:.2f}\n")
-    output_box.insert(tk.INSERT, f"\n===================================================\n")
-    output_box.insert(tk.INSERT, f"Difference in 5 years at drop (${balance:.2f}) and wages earned working ({total_wage}): ${diff_drop:.2f}\n")
-    output_box.insert(tk.INSERT, f"\n===================================================\n")
-    output_box.insert(tk.INSERT, f"Total Benefit for 25 Years service: ${total_benefit_25:.2f} with {retirement_years} years of retirement\n")
-    output_box.insert(tk.INSERT, f"\n===================================================\n")
-    output_box.insert(tk.INSERT, f"Difference in Total Benefit for 25 Years service compared to 20: ${diff_total_25:.2f}\n")
-    output_box.insert(tk.INSERT, f"\n===================================================\n")
-    output_box.insert(tk.INSERT, f"Total Benefit for 30 Years service: ${total_benefit_30:.2f} with {retirement_years} years of retirement\n")
-    output_box.insert(tk.INSERT, f"\n===================================================\n")
-    output_box.insert(tk.INSERT, f"Difference in Total Benefit for 30 Years service compared to 20: ${diff_total_30:.2f}\n")
+    output_box.insert(
+        tk.INSERT, f"\nMonthly Wage at menial job: ${monthly_wage:.2f}\n")
+    output_box.insert(
+        tk.INSERT, f"\n===================================================\n")
+    output_box.insert(
+        tk.INSERT, f"Total Wage at menial job: ${total_wage:.2f}\n after {years_worked} years\n")
+    output_box.insert(
+        tk.INSERT, f"\n===================================================\n")
+    output_box.insert(
+        tk.INSERT, f"Difference in Monthly Income between regular job + pension (${monthly_wage:.2f} + {monthly_benefit:.2f}) and staying on FD until 25 years ({monthly_benefit_25:.2f}): ${diff_monthly:.2f}\n")
+    output_box.insert(
+        tk.INSERT, f"\n===================================================\n")
+    output_box.insert(
+        tk.INSERT, f"Difference in 5 years at drop (${balance:.2f}) and wages earned working ({total_wage}): ${diff_drop:.2f}\n")
+    output_box.insert(
+        tk.INSERT, f"\n===================================================\n")
+    output_box.insert(
+        tk.INSERT, f"Total Benefit for 25 Years service: ${total_benefit_25:.2f} with {retirement_years - 5} years of retirement\n")
+    output_box.insert(
+        tk.INSERT, f"\n===================================================\n")
+    output_box.insert(
+        tk.INSERT, f"Difference in Total Benefit for 25 Years service compared to 20: ${diff_total_25:.2f}\n")
+    output_box.insert(
+        tk.INSERT, f"\n===================================================\n")
+    output_box.insert(
+        tk.INSERT, f"Difference in Total Benefit for 25 Years service compared to 20 with Drop and Menial Job: ${diff_total_25_drop:.2f}\n")
+    output_box.insert(
+        tk.INSERT, f"\n===================================================\n")
+    output_box.insert(
+        tk.INSERT, f"Total Benefit for 25 Years service dropping at 20: ${twofive_plus_drop:.2f} with {retirement_years - 5} years of retirement\n")
+    output_box.insert(
+        tk.INSERT, f"\n===================================================\n")
+    output_box.insert(
+        tk.INSERT, f"Difference in Total Benefit for 25 Years service (with drop) compared to 'just' 20 and a job: ${diff_total_20:.2f}\n")
 
-#create buttons to calculate the pension benefits
-#================================================
-calculate_button = tk.Button(root, text="Calculate Benefit", command=calculate_pension)
+
+# create buttons to calculate the pension benefits
+# ================================================
+calculate_button = tk.Button(
+    root, text="Calculate Benefit", command=calculate_pension)
 calculate_button.pack()
 
-calculate_button_no_drop = tk.Button(root, text="Calculate New Job", command=calculate_pension_no_drop)
+calculate_button_no_drop = tk.Button(
+    root, text="Calculate New Job", command=calculate_pension_no_drop)
 calculate_button_no_drop.pack()
 
-#create a function to save the output to a markdown file
-#======================================================
+# create a function to save the output to a markdown file
+# ======================================================
+
+
 def save_output():
     # open a file dialog to select the file to save to
     file_path = filedialog.asksaveasfilename(defaultextension=".md")
@@ -151,11 +187,12 @@ def save_output():
     with open(file_path, "w") as f:
         f.write(output_box.get("1.0", tk.END))
 
-#create a button to save the output to a markdown file
-#====================================================
+
+# create a button to save the output to a markdown file
+# ====================================================
 save_button = tk.Button(root, text="Save Output", command=save_output)
 save_button.pack()
 
-#run the main loop
-#=================
+# run the main loop
+# =================
 root.mainloop()
