@@ -1,6 +1,18 @@
 import sys
-from PyQt5.QtWidgets import QApplication, QMainWindow, QTabWidget, QWidget, QLabel, QLineEdit, QPushButton, QVBoxLayout, QHBoxLayout, QComboBox
+from PyQt5.QtWidgets import (
+    QApplication,
+    QMainWindow,
+    QTabWidget,
+    QWidget,
+    QLabel,
+    QLineEdit,
+    QPushButton,
+    QVBoxLayout,
+    QHBoxLayout,
+    QComboBox,
+)
 from PyQt5.QtCore import Qt
+
 
 class PensionCalculator(QMainWindow):
     def __init__(self):
@@ -18,6 +30,11 @@ class PensionCalculator(QMainWindow):
         self.tabs.addTab(self.tab1, "Calculate Pension")
         self.tabs.addTab(self.tab2, "Drop Program")
         self.tabs.addTab(self.tab3, "Compare Working Years")
+        self.total_pension_20_num = 0
+        self.total_pension_25_num = 0
+        self.total_pension_30_num = 0
+        self.drop_comp_20 = 0
+        self.drop_comp_25 = 0
 
         # initialize widgets
         self.initTab1()
@@ -51,10 +68,16 @@ class PensionCalculator(QMainWindow):
         self.result_label_30 = QLabel("")
         self.result_label_30.setAlignment(Qt.AlignCenter)
 
+        self.total_pension_20_delimit = QLabel("20 Year Scenario")
+        self.total_pension_20_delimit.setAlignment(Qt.AlignCenter)
         self.total_pension_20 = QLabel("")
         self.total_pension_20.setAlignment(Qt.AlignCenter)
+        self.total_pension_25_delimit = QLabel("25 Year Scenario")
+        self.total_pension_25_delimit.setAlignment(Qt.AlignCenter)
         self.total_pension_25 = QLabel("")
         self.total_pension_25.setAlignment(Qt.AlignCenter)
+        self.total_pension_30_delimit = QLabel("30 Year Scenario")
+        self.total_pension_30_delimit.setAlignment(Qt.AlignCenter)
         self.total_pension_30 = QLabel("")
         self.total_pension_30.setAlignment(Qt.AlignCenter)
 
@@ -74,8 +97,11 @@ class PensionCalculator(QMainWindow):
         layout.addWidget(self.result_label_20)
         layout.addWidget(self.result_label_25)
         layout.addWidget(self.result_label_30)
+        layout.addWidget(self.total_pension_20_delimit)
         layout.addWidget(self.total_pension_20)
+        layout.addWidget(self.total_pension_25_delimit)
         layout.addWidget(self.total_pension_25)
+        layout.addWidget(self.total_pension_30_delimit)
         layout.addWidget(self.total_pension_30)
 
         # set layout for tab1
@@ -85,19 +111,34 @@ class PensionCalculator(QMainWindow):
         # create widgets for tab2
         self.drop_label = QLabel("Monthly Pension Benefit in the Drop Program:")
         self.drop_input = QLineEdit()
+        self.years_retired_label = QLabel(
+            "How many years will you collect retirement benefits?"
+        )
+        self.years_retired_input = QLineEdit()
 
         self.calculate_drop_button = QPushButton("Calculate")
         self.calculate_drop_button.clicked.connect(self.calculate_drop)
 
         self.drop_result_label = QLabel("")
         self.drop_result_label.setAlignment(Qt.AlignCenter)
+        self.drop_comp_20_label = QLabel("")
+        self.drop_comp_20_label.setAlignment(Qt.AlignCenter)
+        self.drop_comp_25_label = QLabel("")
+        self.drop_comp_25_label.setAlignment(Qt.AlignCenter)
+        self.drop_amort_label = QLabel("")
+        self.drop_amort_label.setAlignment(Qt.AlignCenter)
 
         # create layout for tab2
         layout = QVBoxLayout()
         layout.addWidget(self.drop_label)
         layout.addWidget(self.drop_input)
+        layout.addWidget(self.years_retired_label)
+        layout.addWidget(self.years_retired_input)
         layout.addWidget(self.calculate_drop_button)
         layout.addWidget(self.drop_result_label)
+        layout.addWidget(self.drop_comp_20_label)
+        layout.addWidget(self.drop_comp_25_label)
+        layout.addWidget(self.drop_amort_label)
 
         # set layout for tab2
         self.tab2.setLayout(layout)
@@ -151,28 +192,55 @@ class PensionCalculator(QMainWindow):
 
             # calculate projected monthly benefit and future value based on CPI
             cpi = 0.02
-            projected_monthly_pension = monthly_pension * (1 + increase/100)**(death_age - age)
-            future_value = projected_monthly_pension * (1 + cpi/12)**(12 * (death_age - age))
-            self.result_label_20.setText(self.result_label_20.text() + f"\nProjected Monthly Benefit: ${projected_monthly_pension:.2f}\nFuture Value Based on CPI: ${future_value:.2f}")
+            projected_monthly_pension = monthly_pension * (1 + increase / 100) ** (
+                death_age - age
+            )
+            future_value = projected_monthly_pension * (1 + cpi / 12) ** (
+                12 * (death_age - age)
+            )
+            self.result_label_20.setText(
+                self.result_label_20.text()
+                + f"\nProjected Monthly Benefit: ${projected_monthly_pension:.2f}\nFuture Value Based on CPI: ${future_value:.2f}"
+            )
             base_pension_25 = (25 * 0.025 * salary) / 12
             self.base_pension_25 = base_pension_25
             base_pension_30 = (30 * 0.025 * salary) / 12
             self.base_pension_30 = base_pension_30
-            self.result_label_25.setText(f"Monthly Benefit at 25 years of service: ${base_pension_25:.2f}")
-            self.result_label_30.setText(f"Monthly Benefit at 30 years of service: ${base_pension_30:.2f}")
+            self.result_label_25.setText(
+                f"Monthly Benefit at 25 years of service: ${base_pension_25:.2f}"
+            )
+            self.result_label_30.setText(
+                f"Monthly Benefit at 30 years of service: ${base_pension_30:.2f}"
+            )
 
-            #total pension for years of service at 20, 25, 30
-            total_pension_20 = base_pension + (20 * 0.025 * salary) * (death_age - age)
-            total_pension_25 = base_pension + (25 * 0.025 * salary) * (death_age - (age + 5))
-            total_pension_30 = base_pension + (30 * 0.025 * salary) * (death_age - (age + 10))
-            self.total_pension_20.setText(f"Total Pension at 20 years of service for {death_age - age} years: ${total_pension_20:.2f}")
-            self.total_pension_25.setText(f"Total Pension at 25 years of service for {death_age - (age + 5)} years (less 5 due to working longer): ${total_pension_25:.2f}\nwith a difference of ${total_pension_25 - total_pension_20:.2f} from 20 years of service")
-            self.total_pension_30.setText(f"Total Pension at 30 years of service for {death_age - (age + 10)} years (less 10 due to working longer): ${total_pension_30:.2f}\nwith a difference of ${total_pension_30 - total_pension_20:.2f} from 20 years of service")
-
+            # total pension for years of service at 20, 25, 30
+            self.total_pension_20_num = base_pension + (20 * 0.025 * salary) * (
+                death_age - age
+            )
+            # THis is for comparison with in DROP tab
+            self.total_pension_drop_20_num = base_pension + (20 * 0.025 * salary) * (
+                death_age - (age + 5)
+            )
+            self.total_pension_25_num = base_pension + (25 * 0.025 * salary) * (
+                death_age - (age + 5)
+            )
+            self.total_pension_30_num = base_pension + (30 * 0.025 * salary) * (
+                death_age - (age + 10)
+            )
+            self.total_pension_20.setText(
+                f"Total Pension for {death_age - age} years: ${self.total_pension_20_num:.2f}"
+            )
+            self.total_pension_25.setText(
+                f"Total pension for {(death_age - (age + 5))} years (less 5 due to working longer): ${self.total_pension_25_num:.2f}\n with a difference of ${self.total_pension_25_num - self.total_pension_20_num:.2f} from 20 years of service"
+            )
+            self.total_pension_30.setText(
+                f"Total pension for {(death_age - (age + 10))} years (less 10 due to working longer): ${self.total_pension_30_num:.2f}\n with a difference of ${self.total_pension_30_num - self.total_pension_20_num:.2f} from 20 years of service"
+            )
 
     def calculate_drop(self):
         # retrieve input values
         monthly_pension = float(self.drop_input.text())
+        years_retired = int(self.years_retired_input.text())
 
         # calculate drop program amount
         interest_rate = 0.07
@@ -184,18 +252,40 @@ class PensionCalculator(QMainWindow):
             drop_amount = (drop_amount + monthly_pension) * (1 + monthly_rate)
 
         amortized_amount = drop_amount / num_payments
-        self.drop_result_label.setText(f"Total Paid over the Course of the Pension with the Drop Program: ${drop_amount:.2f}")
+        self.drop_result_label.setText(
+            f"Total Paid over the Course of the Pension with the Drop Program: ${drop_amount:.2f}"
+        )
 
         # calculate yearly accumulation and show in separate labels
-        yearly_accumulation = drop_amount / years
-        for i in range(1, years+1):
-            label = QLabel(f"Year {i}: ${yearly_accumulation * i:.2f}")
-            self.tab2.layout().addWidget(label)
+        # yearly_accumulation = drop_amount / years
+        # for i in range(1, years + 1):
+        #     label = QLabel(f"Year {i}: ${yearly_accumulation * i:.2f}")
+        #     self.tab2.layout().addWidget(label)
 
+        # lets figure out the total compensation for those who do not and do participate in the DROP program
+        # lets assume that the person who does not participate in the DROP program retires at 20 years of service
+        # and the person who does participate in the DROP program retires at 25 years of service
+        # we must factor age and death age into the equation
+        self.drop_comp_20_label.setText(
+            "Total Pension at 20 years of service last operation is ${:.2f}".format(
+                self.total_pension_20_num
+            )
+        )
+        total_pen_drop_25 = self.total_pension_drop_20_num + drop_amount
+        diff_drop_25 = total_pen_drop_25 - self.total_pension_20_num
+        self.drop_comp_25_label.setText(
+            f"Total Pension at 20 years of service subtracting 5 years of pension collection for DROP is ${total_pen_drop_25:.2f}\n The difference is ${diff_drop_25:.2f} as this person collected pension for 5 years additional years."
+        )
+
+        self.drop_amort_label.setText(
+            f"Amortize the DROP and pension over ${(years_retired - 5)} years of collecting pension is ${(total_pen_drop_25 / (years_retired - 5)):.2f} per year.\n Amortize standard 20 year pension over ${years_retired} years is ${(self.total_pension_20_num / years_retired):.2f} per year.\n Difference is ${(total_pen_drop_25 / (years_retired - 5) - (self.total_pension_20_num / years_retired)):.2f} per year."
+        )
 
     def calculate_compare(self):
         # retrieve input values
-        self.monthly_salary_lable.setText(f"Monthly Pension at 20 years is: ${self.monthly_pension:.2f} and at 25 years is: ${self.base_pension_25:.2f} and at 30 years is: ${self.base_pension_30:.2f}")
+        self.monthly_salary_lable.setText(
+            f"Monthly Pension at 20 years is: ${self.monthly_pension:.2f} and at 25 years is: ${self.base_pension_25:.2f} and at 30 years is: ${self.base_pension_30:.2f}"
+        )
         monthly_salary = self.monthly_pension
         hourly_rate = float(self.hourly_rate_input.text())
         hours_per_week = float(self.hours_per_week_input.text())
@@ -205,18 +295,24 @@ class PensionCalculator(QMainWindow):
         difference = equivalent_hourly_rate - hourly_rate
 
         # calculate equivalent hourly rate to make difference bewteen 20 and 25 years
-        equivalent_hourly_rate_diff = (self.base_pension_25 - monthly_salary) / (4 * hours_per_week)
+        equivalent_hourly_rate_diff = (self.base_pension_25 - monthly_salary) / (
+            4 * hours_per_week
+        )
         difference_diff = equivalent_hourly_rate_diff - hourly_rate
-
 
         # display result
         if difference <= 0:
-            self.compare_result_label.setText("You are already earning enough to meet or exceed your monthly pension.")
+            self.compare_result_label.setText(
+                "You are already earning enough to meet or exceed your monthly pension."
+            )
         else:
-            self.compare_result_label.setText(f"You would need to make at least ${equivalent_hourly_rate:.2f} per hour to meet or exceed your monthly pension in total.\n \
+            self.compare_result_label.setText(
+                f"You would need to make at least ${equivalent_hourly_rate:.2f} per hour to meet or exceed your monthly pension in total. \
                                                This is a difference of ${difference:.2f} per hour.\n \
-                                               However, if you retire at 20 years with {monthly_salary:.2f} the equivalent hourly rate to make up the difference between 20 and 25 years is ${equivalent_hourly_rate_diff:.2f} per hour.\n \
-                                               This is a difference of ${difference_diff:.2f} per hour.")
+                                               However, if you retire at 20 years with {monthly_salary:.2f} the equivalent hourly rate to make up the difference between 20 and 25 years is ${equivalent_hourly_rate_diff:.2f} per hour. \
+                                               This is a difference of ${difference_diff:.2f} per hour."
+            )
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
