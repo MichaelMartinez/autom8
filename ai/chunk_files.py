@@ -2,7 +2,7 @@ import os
 
 
 def split_text_file(filepath, word_limit=500):
-    with open(filepath, "r") as file:
+    with open(filepath, "r", encoding="utf-8") as file:
         text = file.read()
         words = text.split()
 
@@ -16,7 +16,9 @@ def split_text_file(filepath, word_limit=500):
         end = min((i + 1) * word_limit, total_words)
         chunk = " ".join(words[start:end])
         # Write each chunk to a new file
-        with open(f"{filepath}_part_{i + 1}.txt", "w") as chunk_file:
+        with open(
+            f"{filepath}_part_{i + 1}.txt", "w", encoding="utf-8", errors="ignore"
+        ) as chunk_file:
             chunk_file.write(chunk)
 
 
@@ -28,4 +30,4 @@ def process_folder(directory):
 
 
 # Example use with a folder path
-process_folder("D:/CODE/autom8/datasets")
+process_folder("C:/Users/machi/Documents/Datasets/Fusion360_Dataset")

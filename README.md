@@ -9,3 +9,4 @@ Life, System and Other Automations
 * LLM / AI tools go in the `ai` folder
 
 **Workstation uses `flask` env for everything**
+**Laptop uses `gptplay` env for everything**

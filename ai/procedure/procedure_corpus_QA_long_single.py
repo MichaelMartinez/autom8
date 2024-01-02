@@ -12,7 +12,7 @@ preprompt = """
 You are an assistant that is great at interpreting text and creating questions based on the context<|im_end|>
 <|im_start|>user
 Below is an excerpt from a book. Based on this excerpt, please write 1 long detailed request/instruction and answer about the text. Make sure that answer follows the same style as the excerpt.
-Request should start with "fill_in_yourself:" and every answer should start with "fill_in_yourself:" Request has to be very complex, detailed and in-depth. Do not mention that question comes from an excerpt in the question itself, ask about technical details.
+Request should start with "user:" and every answer should start with "assistant:" Request has to be very complex, detailed and in-depth. Do not mention that question comes from an excerpt in the question itself, ask about technical details.
 
 CONTEXT START
 """
@@ -30,11 +30,11 @@ I made sure that the style of the response matches the style of the excerpt.
 fill_in_yourself:"""
 
 
-def call_api(prompt, config):
-    url = "http://127.0.0.1:5001/api/v1/generate"
+def call_api(prompt):
+    url = "https://chat.michaelmartinez.us/v1"
 
-    with open(config, "r", encoding="utf-8") as config_file:
-        config_data = json.load(config_file)
+    # with open(config, "r", encoding="utf-8") as config_file:
+    #     config_data = json.load(config_file)
 
     data = {
         "prompt": f"{prompt}",
