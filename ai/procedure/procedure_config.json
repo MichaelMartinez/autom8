@@ -1,0 +1,7 @@
+{
+  "max_length": 1024,
+  "sampler_seed": -1,
+  "max_context_length": 8192,
+  "stop_sequence": [],
+  "temperature": 0.8
+ }
