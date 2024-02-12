@@ -30,4 +30,4 @@ def process_folder(directory):
 
 
 # Example use with a folder path
-process_folder("C:/Users/machi/Documents/Datasets/Fusion360_Dataset")
+process_folder("D:/CODE/LLM_Datasets/FusionCam")
