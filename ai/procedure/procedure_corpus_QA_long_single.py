@@ -23,7 +23,7 @@ CONTEXT STOP
 Above is an excerpt from a book. Based on this excerpt, please write 1 detailed in-depth request/instruction and answer about the text. Make sure that answer follow the same style as the excerpt.
 
 ASSISTANT:
-Sure, below is an advanced instrustion and response that can be inferred based on the content of the CONTEXT, the person asking the question is "fill_in_yourself:" and the person who responds is called "fill_in_yourself:".
+Sure, below is an advanced instrustion and response that can be inferred based on the content of the CONTEXT, the person asking the question is "user:" and the person who responds is called "assistant:".
 I made sure that the instruction  is in context to the CONTEXT.
 I made sure that the style of the response matches the style of the excerpt.
 
@@ -31,15 +31,12 @@ fill_in_yourself:"""
 
 
 def call_api(prompt):
-    url = "https://chat.michaelmartinez.us/v1"
+    url = "http://localhost:1234/v1"
 
     # with open(config, "r", encoding="utf-8") as config_file:
     #     config_data = json.load(config_file)
 
-    data = {
-        "prompt": f"{prompt}",
-        **config_data,
-    }
+    data = {"prompt": f"{prompt}"}
     response = requests.post(url, json=data)
 
     try:
@@ -53,7 +50,7 @@ def call_api(prompt):
 
 while True:
     # Construct the file name using string formatting
-    file_name = "fill_in_yourself/book_cleaned.txt"
+    file_name = "D:/CODE/LLM_Datasets/FusionCam/fusion_cam.txt"
     # Call the action function with the file name
     # Check if the file exists
     if os.path.exists(file_name):
@@ -75,12 +72,12 @@ while True:
             output = chunks
             chunkcount = str(len(output))
             # Define the url of the koboldcpp api
-            url = "http://127.0.0.1:5001/api/v1/generate"
+            url = "http://localhost:1234/v1"
             # Define an empty list to store the responses from the koboldcpp api
             responses = []
             # Loop through the output list
             file_size_limit = 50 * 1024 * 1024  # 50 megabytes
-            corpus_file_name = "fill_in_yourself/book_corpus1.txt"
+            corpus_file_name = "D:/CODE/LLM_Datasets/FusionCam/book_corpus1.txt"
             corpus_file = open(corpus_file_name, "a", encoding="utf-8")
             k = 0
             for chunk in output:
@@ -94,7 +91,7 @@ while True:
                 data = data1.encode("utf-8")
                 header = {"Content-Type": "text/plain; charset=utf-8"}
                 # Send a post request with the chunk as data
-                response = response = call_api(data, "config.json")
+                response = response = call_api(data)
                 # Check if the response is successful
                 if response:
                     # Store the response in a variable
