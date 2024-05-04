@@ -1,0 +1,927 @@
+The Art  of  Asking  ChatGPT  for  High-Quality
+Answers
+A Complete  Guide  to  Prompt  Engineering  T echniques
+Ibrahim  John
+Nzunda  T echnologies  Limited
+ 
+ 
+Copyright  © 2023 Ibrahim  John
+All rights  reserved  
+ 
+The characters  and  events  portrayed  in  this  book  are  ﬁctitious . Any  similarity  to  real  persons ,
+living  or  dead , is  coincidental  and  not  intended  by  the  author . 
+ 
+No part  of  this  book  may  be  reproduced , or  stored  in  a  retrieval  system , or  transmitted  in  any
+form  or  by  any  means , electronic , mechanical , photocopying , recording , or  otherwise , without
+express  written  permission  of  the  publisher . 
+ 
+ISBN- 13: 9781234567890  
+ISBN- 10: 1477123456  
+ 
+Cover  design  by : Art  Painter  
+Library  of  Congress  Control  Number : 2018675309  
+Printed  in  the  United  States  of  AmericaT able  of  Contents
+Introduction
+Chapter  1: Introduction  to  Prompt  Engineering  T echniques
+What  is  Prompt  engineering ?
+Chapter  2: Instructions  Prompt  T echnique
+Examples :
+Chapter  3: Role  Prompting
+Chapter  4: Standard  Prompts
+Chapter  5: Zero , One  and  Few  Shot  Prompting
+Chapter  6: "Let’ s  think  about  this”  prompt
+Chapter  7: Self-Consistency  Prompt
+Chapter  8: Seed-word  Prompt
+Chapter  9: Knowledge  Generation  prompt
+Chapter  10: Knowledge  Integration  prompts
+How  to  use  it  with  ChatGPT :
+Chapter  11: Multiple  Choice  prompts
+Chapter  12: Interpretable  Soft  Prompts
+Chapter  13: Controlled  Generation  prompts
+Chapter  14: Question-answering  prompts
+Chapter  15: Summarization  prompts
+How  to  use  it  with  ChatGPT :
+Chapter  16: Dialogue  prompts
+Chapter  17: Adversarial  prompts
+Chapter  18: Clustering  prompts
+How  to  use  it  with  ChatGPT :
+Chapter  19: Reinforcement  learning  prompts
+Chapter  20: Curriculum  learning  prompts
+Chapter  21: Sentiment  analysis  prompts
+Chapter  22: Named  entity  recognition  prompts
+Chapter  23: T ext  classiﬁcation  prompts
+Chapter  24: T ext  generation  prompts
+ConclusionIntroduction
+ 
+I am  thrilled  to  welcome  you  to  my  latest  book , "The  Art  of  Asking
+ChatGPT  for  High-Quality  Answers : A  complete  Guide  to  Prompt
+Engineering  T echniques” .
+This  bo ok  is  a  comprehen sive  guide  to  understanding  and
+utilizing  various  prompt  techniques  used  to  generate  high-quality
+answers  from  ChatGPT . 
+W e will  explore  how  dif feren t  prompt  engineering  techniques
+can be  used  to  achieve  dif ferent  goals . ChatGPT  is  a  sta te-of-the-art
+language  model  that  is  capable  of  generating  human-like  text .
+However , i t i s vital  to  un derstand  the  right  way  to  ask  ChatGPT  in
+order  to  get  the  high-quality  outputs  we  desire . 
+And that  is  the  purpose  of  this  book . Whether  you  are  a  normal
+person , a  researcher , a  developer , or  simply  someone  who  wants  to
+use Ch atGPT  as  his  personal  assistant  in  your  ﬁeld , this  book  is
+written  for  you . 
+I h ave  used  simple  language  with  on-point  p ractical
+explanations , together  with  examples  and  prompt  fo rmulas  on
+every  prompt  technique . With  this  book , you'll  learn  how  to  use
+prompt  engine ering  technique s  to  control  the  output  of  ChatGPT  and
+generate  text  that  is  tailored  to  your  speciﬁc  needs .
+Throughout  this  book , we  also  provide  examples  of  how  to
+combine  different  prompt  techniques  to achieve  more  speciﬁc
+outcomes .  
+ 
+I hope  that  you  will  ﬁnd  this  book  informative  and  enjoyable  as
+much  as  I  enjoyed  writing  it .Chapter  1: Introduction  to  Prompt  Engineering
+T echniques
+What  is  Prompt  engineering ?
+Prompt  engineering  is  the  process  of  creating  prompts  or  asking  or
+instructions  that  guide  the  output  of  a  language  model  like  ChatGPT . It
+allows  u sers  to  control  the  ou tput  of  the  model  and  genera te  text  that
+is tailored  to  their  speciﬁc  needs .
+ChatGPT  is  a  state-of-the-ar t  language  model  that  is  capable  of
+generating  human-like  text . It  is  built  on  the  transformer  a rchitecture ,
+which  allows  it  to  handle  lar ge  amounts  of  data  and  generate  high-
+quality  text .
+However , in  order  to  get  th e  best  results  from  ChatGPT , it  is
+important  to  understand  how  to  properly  prompt  the  model .
+Prompting  allo ws  users  to  control  the  output  of  the  mo del  and
+generate  text  that  is  relevant , accurate , and  of  high-quality .
+When  w orking  with  ChatGPT , it  is  important  to  understand  its
+capabilities  and  limitations .
+The model  is  c apable  of  generating  human-like  text , but  it  may  not
+always  produce  the  desired  output  without  proper  guidance .
+This  is  where  prompt  engineering  comes  in , by  providing  clear  and
+speciﬁc  instruc tions , you  can  guide  the  model's  output  and  ensure  that
+it is relevant .
+A prompt  formula  is  a  speciﬁc  format  for  the  prompt , it  is  generally
+composed  of  3 main  elements :
+task: a  clear  a nd  concise  statement  of  what  the  prompt  is
+asking  the  model  to  generate .
+instructions : the  instructions  that  should  be  followed  by  the
+model  when  generating  text .
+role: the  role  that  the  model  should  take  on  when  generating
+text.
+In t his  book , we  will  explo re  the  various  prompt  engineering
+techniques  that  can  be  used  with  ChatGPT . W e  will  discuss  thedif ferent  types  of  prompts , as  well  as  how  to  use  them  to  achieve
+speciﬁc  goals  you  want .Chapter  2: Instructions  Prompt  T echnique
+Now , let  us  start  by  exploring  the  “instructions  prompt  technique”
+and how  it  can  be  used  to  generate  high-quality  text  from  ChatGPT .
+The instructions  prompt  techn ique  is  a  way  of  guiding  the  o utput  of
+ChatGPT  by  providing  spec iﬁc  instructions  for  the  model  to  follow .
+This  tec hnique  is  useful  for  ensuring  that  the  output  is  relevant  and
+high-quality .
+T o u se  the  inst ructions  prompt  technique , you  will  need  to  provide
+a cle ar  and  con cise  task  for  t he  model , as  well  as  speciﬁc  instructions
+for the  model  to  follow .
+For example , if  you  are  generating  customer  service  responses ,
+you would  provide  a  task  su ch  as  "generate  responses  to  customer
+inquiries"  and  instructions  such  as  "responses  should  be  professional
+and provide  accurate  information" .
+Prompt  formu la : "Generate  [ task ] following  these  inst ructions :
+[ instructions ] "
+Examples :
+Generating  customer  service  responses :
+T ask : Generate  responses  to  customer  inquiries
+Instructions : T he  responses  should  be  professional  and
+provide  accurate  information
+Prompt  formu la : "Generate  professional  and  accura te
+responses  to  customer  inquiries  following  these  instruction s :
+The responses  should  be  professional  and  provide  accura te
+information . "
+Generating  a  legal  document :
+T ask : Generate  a  legal  document
+Instructions : The  document  should  be  in  compliance  with
+relevant  laws  and  regulations
+Prompt  formu la : "Generate  a  legal  document  that  is
+compliant  with  relevant  laws  and  regulations  following  the seinstructions : T he  document  should  be  in  compliance  w ith
+relevant  laws  and  regulations . "
+When  u sing  the  instructions  prompt  technique , it  is  important  to
+keep  in  mind  t hat  the  instructions  should  be  clear  and  speciﬁc . This
+will help  to  en sure  that  the  output  is  relevant  and  high-quality . The
+instructions  prompt  technique  can  be  combined  together  with  “role
+prompting”  and  “seed-word  prompting”  as  explained  in  the  next
+chapter  to  enhance  the  output  of  ChatGPT .Chapter  3: Role  Prompting
+The role  prompting  techniqu e  is  a  way  of  guiding  the  output  of
+ChatGPT  by  providing  a  spe ciﬁc  role  for  the  model  to  take  on . This
+technique  is  useful  for  generating  text  that  is  tailored  to  a  speciﬁc
+context  or  audience .
+T o u se  the  role  prompting  te chnique , you  will  need  to  p rovide  a
+clear  an d  speciﬁc  role  for  the  model  to  take  on . For  example , if  you  are
+generating  customer  service  responses , you  would  provide  a  role
+such  as  "customer  service  representative" .
+Prompt  formula : "Generate  [ task ] as  a  [ role ] "
+Example :
+Generating  customer  service  responses :
+T ask : Generate  responses  to  customer  inquiries
+Role : Customer  service  representative
+Prompt  formula : "Generate  responses  to  customer  inquiries
+as a customer  service  representative . "
+Generating  a  legal  document :
+T ask : Generate  a  legal  document
+Role : Lawyer
+Prompt  formula : "Generate  a  legal  document  as  a  lawyer . "
+Using  the  role  prompting  technique  with  instruction  prompting  and
+seed-word  prompting  will  enhance  the  output  of  ChatGPT .
+Here  is  an  example  of  how  the  instruction  prompting , role
+prompting , and  seed-word  prompting  techniques  can  be  combined :
+T ask : Generate  a  product  description  for  a  new  smartphone
+Instructions : The  description  should  be  informativ e ,
+persuasive  an d  highlight  the  unique  features  of  the
+smartphone
+Role : Marketing  representative
+Seed-word : "innovative"Prompt  formula : "As  a  marketing  representative , generate  an
+informative , persuasive  product  description  that  highligh ts
+the innovative  features  of  the  new  smartphone . The
+smartphone  has  the  following  features  [ insert  your  features ] ”
+In this  exampl e , the  instruction  prompting  is  used  to  ensure  that
+the product  description  is  informative  and  persuasive . The  role
+prompting  is  used  to  ensure  that  the  description  is  writte n  from  the
+perspective  o f  a  marketing  representative . And  the  seed-word
+prompting  is  used  to  ensur e  that  the  description  focuses  on  the
+innovative  features  of  the  smartphone .Chapter  4: Standard  Prompts
+Standard  prompts  are  a  simple  way  to  guide  the  output  of
+ChatGPT  by  providing  a  speciﬁc  task  for  the  model  to  complete .
+For exa mple , if  you  want  to  generate  a  summary  of  a  news  article ,
+you would  provide  a  task  such  as  "summarize  this  news  article" .
+Prompt  formula : "Generate  a  [ task ] "
+Example :
+Generating  a  summary  of  a  news  article :
+T ask : Summarize  this  news  article
+Prompt  formula : "Generate  a  summary  of  this  news  article"
+ 
+Generating  a  product  review :
+T ask : W rite  a  review  of  a  new  smartphone
+Prompt  formula : "Generate  a  review  of  this  new  smartphone"
+Also , Standard  prompts  can  be  combined  with  other  techniques
+like role  prompting  and  seed- word  prompting  to  enhance  the  output  of
+ChatGPT .
+Here  is  an  example  of  how  the  standard  prompts , role  pro mpting ,
+and seed-word  prompting  techniques  can  be  combined :
+T ask : Generate  a  product  review  for  a  new  laptop
+Instructions : Th e  review  should  be  objective , informative  a nd
+highlight  the  unique  features  of  the  laptop
+Role : T ech  expert
+Seed-word : "powerful"
+Prompt  formula : "As  a  tech  expert , generate  an  objective  and
+informative  pr oduct  review  that  highlights  the  power ful
+features  of  the  new  laptop . "In th is  example , the  standard  prompts  technique  is  used  to  ensure
+that the  model  generates  a  pr oduct  review . The  role  prompting  is  used
+to ensure  that  the  review  is  written  from  the  perspective  of  a  tech
+expert . And  the  seedword  pro mpting  is  used  to  ensure  tha t  the  review
+focuses  on  the  powerful  features  of  the  laptop .Chapter  5: Zero , One  and  Few  Shot  Prompting
+Zero-shot , one -shot , and  few-shot  prompting  are  techniqu es  used
+to generate  text  from  ChatGPT  with  minimal  or  no  examples . These
+techniques  are  useful  when  there  is  limited  data  available  for  a
+speciﬁc  task  or  when  the  task  is  new  and  not  well-deﬁned .
+The ze ro-shot  prompting  technique  is  used  when  there  are  no
+examples  available  for  the  task . The  model  is  provided  with  a  general
+task and  it  generates  text  based  on  its  understanding  of  the  task .
+The one-shot  prompting  tech nique  is  used  when  there  is  only  one
+example  avail able  for  the  task . The  model  is  provided  with  the
+example  and  generates  tex t  based  on  its  understanding  of  the
+example .
+The few -shot  prompting  techn ique  is  used  when  there  are  a  limited
+number  of  examples  available  for  the  task . The  model  is  pr ovided  with
+the examples  and  generates  text  based  on  its  understan ding  of  the
+examples .
+Prompt  formula : "Generate  text  based  on  [ number ] examples"
+Example :
+Generating  a  product  descrip tion  for  a  new  product  with  no
+examples  available :
+T ask : W rite  a  product  description  for  a  new  smartwatch
+Prompt  formula : "Generate  a  product  description  for  this  new
+smartwatch  with  zero  examples"
+Generating  a  product  com parison  with  one  examp le
+available :
+T ask : Compare  a  new  smartphone  to  the  latest  iPhone
+Prompt  formula : "Generate  a  product  comparison  of  this  new
+smartphone  with  one  example  ( latest  iPhone ) "
+Generating  a  product  review  with  few  examples  available :T ask : W rite  a  review  of  a  new  e-reader
+Prompt  formula : "Generate  a  review  of  this  new  e-reader  w ith
+few examples  (3 other  e-readers ) "
+These  techniq ues  can  be  used  to  generate  text  based  on  a
+model's  understanding  of  the  task  or  examples  provided .Chapter  6: "Let’ s  think  about  this”  prompt
+The "Let's  think  about  this "  prompt  is  a  technique  used  to
+encourage  ChatGPT  to  generate  text  that  is  reﬂective  and
+contemplative . This  technique  is  useful  for  tasks  such  as  writing
+essays , poetry , or  creative  writing .
+The prompt  formula  for  the  "L et's  think  about  this"  prompt  i s  simply
+the phrase  "Let's  think  about  this"  followed  by  a  topic  or  question .
+Example :
+Generating  a  reﬂective  essay :
+T ask : W rite  a  reﬂective  essay  on  the  topic  of  personal  growth
+Prompt  formula : "Let's  think  about  this : personal  growth"
+Generating  a  poem :
+T ask : W rite  a  poem  about  the  changing  seasons
+Prompt  formula : "Let's  think  about  this : the  changing  seasons"
+This  prompt  is  asking  for  a  conversation  or  discussion  about  a
+speciﬁc  topic  or  idea . The  speaker  is  inviting  ChatGPT  to  engage  in  a
+dialogue  about  the  subject  at  hand .
+The model  is  p rovided  with  a  prompt , which  serves  as  the  starting
+point  for  the  conversation  or  text  generation .
+The model  then  uses  its  train ing  data  and  algorithms  to  ge nerate  a
+response  that  is  relevant  to  the  prompt . This  technique  allows
+ChatGPT  to  generate  conte xtually  appropriate  and  co herent  text
+based  on  the  provided  prompt .
+T o u se  the  "Let ’ s  think  about  this  prompt"  technique  with  C hatGPT ,
+you can  follow  these  steps :
+1. Identify  the  topic  or  idea  you  want  to  discuss .
+2. Formulate  a  prompt  that  clearly  states  the  topic  or  idea , and
+starts  the  conversation  or  text  generation .
+3. Preface  the  prompt  with  "Let's  think  about"  or  "Let's  discuss"
+to indicate  that  you're  initiating  a  conversation  or  discussion .Here  are  a  few  examples  of  prompts  using  this  technique :
+Prompt : "Let's  think  about  the  impact  of  climate  change  on
+agriculture"
+Prompt : "Let's  discuss  the  current  state  of  artiﬁcial  intelligence"
+Prompt : "Let's  talk  about  the  beneﬁts  and  drawbacks  of  remote
+work"
+Y ou can  also  add  a  open-end ed  question , statement  or  a  piece  of
+text that  you  want  the  model  to  continue  or  build  upon .
+Once  you  provide  the  promp t , the  model  will  use  its  training  data
+and algorithms  to  generate  a  response  that  is  relevant  to  the  prompt
+and will  continue  the  conversation  in  a  coherent  way .
+This  unique  prompt  helps  ChatGPT  to  give  answers  in  dif ferent
+perspectives  and  angles , resulting  in  more  dynamic  and  informative
+passages .
+The steps  to  use  the  prompt  are  simple  and  easy  to  follow , and  it
+can truly  make  a  dif ference  in  your  writing . Give  it  a  try  and  see  for
+yourselfChapter  7: Self-Consistency  Prompt
+The Self-Cons istency  prompt  is  a  technique  used  to  ensure  that
+the out put  of  ChatGPT  is  c onsistent  with  the  input  provided . This
+technique  is  useful  for  tasks  such  as  fact-checking , data  validation , or
+consistency  checking  in  text  generation .
+The pro mpt  fo rmula  for  the  Self-Consistency  prompt  is  the  input
+text followed  by  the  instruction  "Please  ensure  the  following  text  is
+self-consistent"
+Alternatively , th e  model  can  be  prompted  to  generate  text  that  is
+consistent  with  the  provided  input .
+Prompt  Examples  and  their  Formula :
+Example  1: T ext  Generation
+T ask : Generate  a  product  review
+Instructions : T he  review  should  be  consistent  with  t he
+product  information  provided  in  the  input
+Prompt  formula : "Generate  a  product  review  that  is
+consistent  wit h  the  following  product  information  [ ins ert
+product  information ] "
+Example  2: T ext  Summarization
+T ask : Summarize  a  news  article
+Instructions : The  summary  should  be  consistent  with  t he
+information  provided  in  the  article
+Prompt  formula : "Summarize  the  following  news  article  in  a
+way that  is  consistent  with  the  information  provided  [ insert
+news  article ] "
+Example  3: T ext  Completion
+T ask : Complete  a  sentence
+Instructions : The  completion  should  be  consistent  with  t he
+context  provided  in  the  inputPrompt  formula : "Complete  the  following  sentence  in  a  way
+that is  consistent  with  the  context  provided  [ insert  sentence ] "
+Example  4:
+1. Fact-checking :
+T ask : Check  for  consistency  in  a  given  news  article
+Input  text : "The  article  states  that  the  population  of  the  city  is
+5 million , but  later  on , it  says  that  the  population  is  7 million . "
+Prompt  formula : "Please  ensure  the  following  text  is  self-
+consistent : The  article  states  that  the  population  of  the  city  is
+5 million , but  later  on , it  says  that  the  population  is  7 million . "
+ 
+2. Data  validation :
+T ask : Check  for  consistency  in  a  given  data  set
+Input  text : "The  data  shows  t hat  the  average  temperature  in
+July is  30 degre es , but  the  minimum  temperature  is  record ed
+as 20 degrees . "
+Prompt  formula : "Please  ensure  the  following  text  is  self-
+consistent : The  data  shows  that  the  average  temperature  in
+July is  30 degre es , but  the  minimum  temperature  is  record ed
+as 20 degrees . "Chapter  8: Seed-word  Prompt
+The Seed-word  prompt  is  a  te chnique  used  to  control  the  o utput  of
+ChatGPT  by  providing  it  with  a  speciﬁc  seed-word  or  phrase .
+The prompt  formula  for  the  Seed-word  prompt  is  the  seed-word  or
+phrase  followe d  by  the  instruction  "Please  generate  text  based  on  the
+following  seed-word"
+Examples :
+T ext generation :
+T ask : Generate  a  story  about  a  dragon
+Seed-word : "Dragon"
+Prompt  formula : "Please  generate  text  based  on  the  following
+seed-word : Dragon"
+Language  T ranslation :
+T ask : T ranslate  a  sentence  from  English  to  Spanish
+Seed-word : "Hello"
+Prompt  formula : "Please  generate  text  based  on  the  following
+seed-word : Hello"
+This  technique  allows  the  model  to  generate  text  that  is  related  to
+the seed  word  and  expand  on  it . It's  a  way  to  control  the  model's
+generated  text  to  be  related  to  a  certain  topic  or  context .
+The Seed-word  prompt  can  be  combined  with  role  prompting  and
+instruction  prompting  to  create  more  speciﬁc  and  targeted  generated
+text. By  providi ng  a  seed  wor d  or  phrase , the  model  can  generate  text
+that is  related  to  that  seed  word  or  phrase  and  by  providing
+information  abo ut  the  desired  output  and  role , the  model  ca n  generate
+text in  a  spec iﬁc  style  or  tone  that  is  consistent  with  the  role  or
+instructions . Th is  allows  for  more  control  over  the  generated  text  and
+can be  useful  for  a  wide  range  of  applications
+Here  are  Prompt  Examples  and  their  Formula :
+Example  1: T ext  GenerationT ask : Generate  a  poem
+Instructions : The  poem  should  be  related  to  the  seed  word
+"love"  and  should  be  written  in  the  style  of  a  sonnet .
+Role : Poet
+Prompt  formula : "Generate  a  sonnet  related  to  the  seed  word
+'love'  as  a  poet"
+Example  2: T ext  Completion
+T ask : Complete  a  sentence
+Instructions : The  completion  should  be  related  to  the  seed
+word  "science"  and  should  be  written  in  the  style  of  a  research
+paper
+Role : Researcher
+Prompt  formula : "Complete  the  following  sentence  in  a  way
+that is  related  to  the  seed  w ord  'science'  and  in  the  sty le  of  a
+research  paper  as  a  researcher : [ insert  sentence ] "
+Example  3: T ext  Summarization
+T ask : Summarize  a  news  article
+Instructions : The  summary  sh ould  be  related  to  the  seed  word
+"politics"  and  should  be  written  in  a  neutral  and  unbiased  tone
+Role : Journalist
+Prompt  formula : "Summarize  the  following  news  article  in  a
+way that  is  related  to  the  seed  word  'politics'  in  a  neutral  and
+unbiased  tone  as  a  journalist : [ insert  news  article ] "Chapter  9: Knowledge  Generation  prompt
+The Kn owledge  Generation  prompt  is  a  technique  used  to  elicit
+new and  original  information  from  ChatGPT .
+The prompt  formula  for  the  Knowledge  Generation  prompt  is
+"Please  generate  new  and  original  information  about  X"  where  X  is  the
+topic  of  interest .
+This  is  a  techn ique  that  uses  a  model's  pre-existing  knowledge  to
+generate  new  information  or  to  answer  a  question .
+T o u se  this  pro mpt  with  ChatGPT , the  model  should  be  p rovided
+with a  question  or  topic  as  input , along  with  a  prompt  that  s peciﬁes  the
+task or  goal  for  the  gener ated  text . The  prompt  should  include
+information  ab out  the  desired  output , such  as  the  type  of  text  to  be
+generated  and  any  speciﬁc  requirements  or  constraints .
+Here  are  Prompt  Examples  and  their  Formula :
+Example  1: Knowledge  Generation
+T ask : Generate  new  information  about  a  speciﬁc  topic
+Instructions : T he  generated  information  should  be  accu rate
+and relevant  to  the  topic
+Prompt  formul a : "Generate  new  and  accurate  informa tion
+about  [ speciﬁc  topic ] "
+Example  2: Question  Answering
+T ask : Answer  a  question
+Instructions : The  answer  should  be  accurate  and  relevant  to
+the question
+Prompt  formu la : "Answer  the  following  question : [ in sert
+question ] "
+Example  3: Knowledge  Integration
+T ask : Integrate  new  information  with  the  existing  knowledgeInstructions : The  integration  should  be  accurate  and  relevant
+to the  topic
+Prompt  formula : "Integrate  the  following  information  with  the
+existing  knowledge  about  [ speciﬁc  topic ]: [ insert  new
+information ] "
+ 
+Example  4: Data  Analysis :
+T ask : Generate  insights  about  customer  behavior  from  a  given
+dataset
+Prompt  formula : "Please  generate  new  and  original
+information  about  customer  behavior  from  this  dataset"Chapter  10: Knowledge  Integration  prompts
+This  technique  uses  a  model's  pre-existing  knowledge  to  integrate
+new information  or  to  connect  dif ferent  pieces  of  information .
+This  technique  is  useful  for  combining  existing  knowledge  with  new
+information  to  generate  a  more  comprehensive  understanding  of  a
+speciﬁc  topic .
+How  to  use  it  with  ChatGPT :
+The mo del  should  be  provided  with  a  new  information  and  the
+existing  knowledge  as  input , along  with  a  prompt  that  speciﬁes  the
+task or  goal  for  the  gener ated  text . The  prompt  should  include
+information  ab out  the  desired  output , such  as  the  type  of  text  to  be
+generated  and  any  speciﬁc  requirements  or  constraints .
+Prompt  Examples  and  their  Formula :
+Example  1: Knowledge  Integration
+T ask : Integrate  new  information  with  the  existing  knowledge
+Instructions : The  integration  should  be  accurate  and  relevant
+to the  topic
+Prompt  formula : "Integrate  the  following  information  with  the
+existing  knowledge  about  [ speciﬁc  topic ]: [ insert  new
+information ] "
+Example  2: Connecting  pieces  of  information
+T ask : Connect  dif ferent  pieces  of  information
+Instructions : The  connections  should  be  relevant  and  logical
+Prompt  formula : "Connect  the  following  pieces  of  informa tion
+in a way  that  is  relevant  and  logical : [ insert  information  1] [ insert
+information  2] "
+Example  3: Updating  existing  knowledge
+T ask : Update  existing  knowledge  with  new  informationInstructions : The  updated  information  should  be  accurate  and
+relevant
+Prompt  formula : "Update  the  existing  knowledge  ab out
+[ speciﬁc  topic ] with  the  following  information : [ insert  new
+information ] "Chapter  11: Multiple  Choice  prompts
+This  technique  presents  a  model  with  a  question  or  task  and  a  set
+of predeﬁned  options  as  potential  answers .
+This  te chnique  is  useful  for  generating  text  that  is  limit ed  to  a
+speciﬁc  set  of  options  and  c an  be  used  for  question-answering , text
+completion  and  other  tasks . The  model  can  generate  text  that  is
+limited  to  the  predeﬁned  options .
+T o use  the  multiple-choice  prompt  with  ChatGPT , the  model  should
+be prov ided  w ith  a  question  or  task  as  input , along  with  a  set  of
+predeﬁned  options  as  potential  answers . The  prompt  should  also
+include  informa tion  about  the  desired  output , such  as  the  type  of  text
+to be  generated  and  any  speciﬁc  requirements  or  constraints .
+Prompt  Examples  and  their  Formula :
+Example  1: Question  Answering
+T ask : Answer  a  multiple-choice  question
+Instructions : The  answer  should  be  one  of  the  predeﬁned
+options
+Prompt  formula : "Answer  the  following  question  by  selec ting
+one of  the  foll owing  options : [ insert  question ] [ insert  option  1]
+[ insert  option  2] [ insert  option  3] "
+Example  2: T ext  completion
+T ask : Complete  a  sentence  with  one  of  the  predeﬁned  options
+Instructions : The  completion  should  be  one  of  the  predeﬁned
+options
+Prompt  formula : "Complete  the  following  sentence  by
+selecting  one  of  the  following  options : [ insert  sentence ] [ insert
+option  1] [ insert  option  2] [ insert  option  3] "
+Example  3: Sentiment  analysis
+T ask : Classify  a  text  as  positive , neutral  or  negativeInstructions : The  classiﬁcation  should  be  one  of  the
+predeﬁned  options
+Prompt  formula : "Classify  the  following  text  as  positive , neutral
+or n egative  by  selecting  one  of  the  following  options : [ insert  text ]
+[ positive ] [ neutral ] [ negative ] "Chapter  12: Interpretable  Soft  Prompts
+Interpretable  soft  prompts  is  a  technique  that  allows  to  control  the
+model's  generated  text  while  providing  some  ﬂexibility  to  the  model .
+It is done  by  providing  the  model  with  a  set  of  controlled  inp uts  and
+some  additional  information  about  the  desired  output . This  technique
+allows  for  more  interpretable  and  controllable  generated  text .
+Prompt  Examples  and  their  Formula :
+Example  1: T ext  generation
+T ask : Generate  a  story
+Instructions : T he  story  should  be  based  on  a  given  se t  of
+characters  and  a  speciﬁc  theme
+Prompt  formula : "Generate  a  story  based  on  the  following
+characters : [ insert  characters ] and  the  theme : [ insert  theme ] "
+Example  2: T ext  completion
+T ask : Complete  a  sentence
+Instructions : T he  completion  should  be  in  the  style  of  a
+speciﬁc  author
+Prompt  formula : "Complete  the  following  sentence  in  the  style
+of [ speciﬁc  author ]: [ insert  sentence ] "
+Example  3: Language  modeling
+T ask : Generate  text  in  a  speciﬁc  style
+Instructions : The  text  should  be  in  the  style  of  a  speciﬁc  period
+Prompt  formula : "Generate  text  in  the  style  of  [ speciﬁc  period ]:
+[ insert  context ] "Chapter  13: Controlled  Generation  prompts
+Controlled  generation  prompts  are  techniques  that  allows  to
+generate  text  with  a  high  level  of  control  over  the  output .
+This  is  achiev ed  by  providing  the  model  with  a  speciﬁc  set  of
+inputs , such  as  a  template , a  speciﬁc  vocabulary , or  a  set  of
+constraints , that  can  be  used  to  guide  the  generation  process .
+Here  are  some  Prompt  Examples  and  their  Formula :
+Example  1: T ext  generation
+T ask : Generate  a  story
+Instructions : The  story  should  be  based  on  a  speciﬁc  template
+Prompt  formula : "Generate  a  story  based  on  the  following
+template : [ insert  template ] "
+Example  2: T ext  completion
+T ask : Complete  a  sentence
+Instructions : The  completion  should  use  a  speciﬁc  vocabulary
+Prompt  formula : "Complete  the  following  sentence  using  the
+following  vocabulary : [ insert  vocabulary ]: [ insert  sentence ] "
+Example  3: Language  modeling
+T ask : Generate  text  in  a  speciﬁc  style
+Instructions : The  text  should  follow  a  speciﬁc  set  of
+grammatical  rules
+Prompt  formula : "Generate  text  that  follows  the  following
+grammatical  rules : [ insert  rules ]: [ insert  context ] "
+By providing  the  model  with  a  speciﬁc  set  of  inputs  that  can  be
+used  to  guide  the  generation  process , controlled  generation  prompts
+allows  more  controllable  and  predictable  generated  textChapter  14: Question-answering  prompts
+Question-answering  prompts  is  a  technique  that  allows  a  model  to
+generate  text  that  answers  a  speciﬁc  question  or  task . This  is
+achieved  by  providing  the  model  with  a  question  or  task  as  input ,
+along  w ith  any  additional  information  that  may  be  relevant  to  the
+question  or  task .
+Some  Prompt  Examples  and  their  Formula  are ;
+Example  1: Factual  question  answering
+T ask : Answer  a  factual  question
+Instructions : The  answer  should  be  accurate  and  relevant
+Prompt  formula : "Answer  the  following  factual  question : [ insert
+question ] "
+Example  2: Deﬁnition
+T ask : Provide  the  deﬁnition  of  a  word
+Instructions : The  deﬁnition  should  be  precise
+Prompt  formula : "Deﬁne  the  following  word : [ insert  word ] "
+Example  3: Information  Retrieval
+T ask : Retrieve  information  from  a  speciﬁc  source
+Instructions : The  retrieved  information  should  be  relevant
+Prompt  formul a : "Retrieve  information  about  [ speciﬁc  to pic ]
+from  the  following  source : [ insert  source ] "
+This  can  be  u seful  for  tasks  such  as  question-answer ing  and
+information  retrieval .Chapter  15: Summarization  prompts
+Summarization  prompts  is  a  technique  that  allows  a  model  to
+generate  a  shorter  version  of  a  given  text  while  retaining  its  main
+ideas  and  information .
+This  is  achieve d  by  providing  the  model  with  a  longer  text  as  input
+and asking  it  to  generate  a  summary  of  that  text .
+This  technique  is  useful  for  tasks  such  as  text  summariza tion  and
+information  compression .
+How  to  use  it  with  ChatGPT :
+The model  should  be  provid ed  with  a  longer  text  as  input  and
+asked  t o  generate  a  summary  of  that  text . The  prompt  should  also
+include  information  about  th e  desired  output , such  as  the  desired
+length  of  the  summary  and  any  speciﬁc  requirements  or  constraints .
+Prompt  Examples  and  their  Formula :
+Example  1: Article  summarization
+T ask : Summarize  a  news  article
+Instructions : The  summary  s hould  be  a  brief  overview  of  the
+main  points  of  the  article
+Prompt  formula : "Summarize  the  following  news  article  in  one
+short  sentence : [ insert  article ] "
+Example  2: Meeting  notes
+T ask : Summarize  a  meeting  transcript
+Instructions : The  summary  should  highlight  the  main  decisions
+and actions  from  the  meeting
+Prompt  formula : "Summarize  the  following  meeting  transcript
+by listing  the  main  decisions  and  actions  taken : [ insert  transcript ] "
+Example  3: Book  Summary
+T ask : Summarize  a  bookInstructions : The  summary  s hould  be  a  brief  overview  of  the
+main  points  of  the  book
+Prompt  formula : "Summarize  the  following  book  in  one  short
+paragraph : [ insert  book  title ] "Chapter  16: Dialogue  prompts
+Dialogue  prom pts  is  a  technique  that  allows  a  model  to  generate
+text that  simulates  a  convers ation  between  two  or  more  entities . By
+providing  the  model  with  a  context  and  a  set  of  characters  or  entities ,
+along  w ith  their  roles  and  b ackgrounds , and  asking  the  model  to
+generate  dialogue  between  them
+Therefore , the  model  should  be  provided  with  a  context  a nd  a  set
+of chara cters  or  entities , along  with  their  roles  and  backgrounds . The
+model  should  also  be  provided  with  information  about  the  desired
+output , such  as  the  type  of  conversation  or  dialogue  and  a ny  speciﬁc
+requirements  or  constraints .
+Prompt  Examples  and  their  Formula :
+Example  1: Dialogue  generation
+T ask : Generate  a  conversation  between  two  characters
+Instructions : The  conversation  should  be  natural  and  relevant
+to the  given  context
+Prompt  formu la : "Generate  a  conversation  between  the
+following  chara cters  [ insert  characters ] in  the  following  context
+[ insert  context ] "
+Example  2: Story  writing
+T ask : Generate  a  dialogue  in  a  story
+Instructions : The  dialogue  should  be  consistent  with  the
+characters  and  events  of  the  story
+Prompt  formula : "Generate  a  dialogue  between  the  following
+characters  [ insert  characters ] in  the  following  story  [ insert  story ] "
+Example  3: Chatbot  development
+T ask : Generate  a  dialogue  for  a  customer  service  chatbot
+Instructions : Th e  dialogue  should  be  professional  and  prov ide
+accurate  informationPrompt  formu la : "Generate  a  professional  and  accurate
+dialogue  for  a  c ustomer  service  chatbot , when  the  custom er  asks
+about  [ insert  topic ] "
+Hence  this  technique  is  useful  for  tasks  such  as  dialogue
+generation , story  writing , and  chatbot  development .Chapter  17: Adversarial  prompts
+Adversarial  prompts  is  a  technique  that  allows  a  model  to  generate
+text tha t  is  resistant  to  ce rtain  types  of  attacks  or  biases . This
+technique  can  be  used  to  t rain  models  that  are  more  robust  and
+resistant  to  certain  types  of  attacks  or  biases .
+T o u se  adversarial  prompts  with  ChatGPT , the  model  should  be
+provided  with  a  prompt  that  is  designed  to  be  difﬁcult  for  the  model  to
+generate  text  that  is  consistent  with  the  desired  output . The  prompt
+should  also  include  informatio n  about  the  desired  output , such  as  the
+type  of  text  to  be  generated  and  any  speciﬁc  requirements  or
+constraints .
+Prompt  Examples  and  their  Formula :
+Example  1: Adversarial  prompt  for  text  classiﬁcation
+T ask : Generate  text  that  is  classiﬁed  as  a  speciﬁc  label
+Instructions : The  generated  text  should  be  difﬁcult  to  classify
+as the  speciﬁc  label
+Prompt  formul a : "Generate  text  that  is  difﬁcult  to  classify  as
+[ insert  label ] "
+Example  2: Adversarial  prompt  for  sentiment  analysis
+T ask : Generat e  text  that  is  difﬁcult  to  classify  as  a  speciﬁc
+sentiment
+Instructions : The  generated  text  should  be  difﬁcult  to  classify
+as the  speciﬁc  sentiment
+Prompt  formul a : "Generate  text  that  is  difﬁcult  to  classify  as
+having  the  sentiment  of  [ insert  sentiment ] "
+Example  3: Adversarial  prompt  for  language  translation
+T ask : Generate  text  that  is  difﬁcult  to  translate
+Instructions : The  generated  text  should  be  difﬁcult  to  translate
+to the  target  languagePrompt  formula : "Generate  te xt  that  is  difﬁcult  to  translate  to
+[ insert  target  language ] "Chapter  18: Clustering  prompts
+Clustering  prompts  is  a  technique  that  allows  a  model  to  group
+similar  data  points  together  based  on  certain  characteristics  or
+features .
+This  is  achieve d  by  providing  the  model  with  a  set  of  dat a  points
+and asking  it  to  group  t hem  into  clusters  based  on  certain
+characteristics  or  features .
+This  technique  is  useful  for  tasks  such  as  data  analysis , machine
+learning , and  natural  language  processing .How  to  use  it  with  ChatGPT :
+The mo del  sho uld  be  provided  with  a  set  of  data  points  an d  asked
+to g roup  them  into  clusters  based  on  certain  characteristics  or
+features . The  prompt  should  also  include  information  about  the
+desired  output , such  as  the  n umber  of  clusters  to  be  generated  and
+any speciﬁc  requirements  or  constraints .
+Prompt  Examples  and  their  Formula :
+Example  1: Clustering  of  customer  reviews
+T ask : Group  similar  customer  reviews  together
+Instructions : T he  reviews  should  be  grouped  based  on
+sentiment
+Prompt  formula : "Group  the  following  customer  reviews  into
+clusters  based  on  sentiment : [ insert  reviews ] "
+Example  2: Clustering  of  news  articles
+T ask : Group  similar  news  articles  together
+Instructions : The  articles  should  be  grouped  based  on  topic
+Prompt  formu la : "Group  the  following  news  articles  into
+clusters  based  on  topic : [ insert  articles ] "
+Example  3: Clustering  of  scientiﬁc  papers
+T ask : Group  similar  scientiﬁc  papers  together
+Instructions : The  papers  should  be  grouped  based  on
+research  area
+Prompt  formul a : "Group  the  following  scientiﬁc  papers  into
+clusters  based  on  research  area : [ insert  papers ] "Chapter  19: Reinforcement  learning  prompts
+Reinforcement  learning  prompts  is  a  technique  that  allows  a  model
+to learn  from  its  past  actions  and  improve  its  performance  over  time .
+T o use  reinforcement  learning  prompts  with  ChatGPT , the  model
+should  be  provided  with  a  set  of  inputs  and  rewards , and  allowed  to
+adjust  its  behavior  based  on  the  rewards  it  receives . The  prompt
+should  also  include  informatio n  about  the  desired  output , such  as  the
+task to  be  accomplished  and  any  speciﬁc  requirements  or  constraints .
+This  technique  is  useful  for  tasks  such  as  decision  makin g , game
+playing , and  natural  language  generation .
+Prompt  Examples  and  their  Formula :
+Example  1: Reinforcement  learning  for  text  generation
+T ask : Generate  text  that  is  consistent  with  a  speciﬁc  style
+Instructions : The  model  should  adjust  its  behavior  based  on
+the rewards  it  receives  for  generating  text  that  is  consistent  with
+the speciﬁc  style
+Prompt  formula : "Use  reinforcement  learning  to  generate  text
+that is  consistent  with  the  following  style  [ insert  style ] "
+Example  2: Reinforcement  learning  for  language  translation
+T ask : T ranslate  text  from  one  language  to  another
+Instructions : The  model  should  adjust  its  behavior  based  on
+the rewards  it  receives  for  producing  accurate  translations
+Prompt  formula : "Use  reinfor cement  learning  to  translate  the
+following  text  [ insert  text ] from  [ insert  language ] to  [ insert
+language ] "
+Example  3: Reinforcement  learning  for  question  answering
+T ask : Generate  answer  to  a  question
+Instructions : The  model  should  adjust  its  behavior  based  on
+the rewards  it  receives  for  producing  accurate  answersPrompt  formula : "Use  reinforcement  learning  to  generate  an
+answer  to  the  following  question  [ insert  question ] "Chapter  20: Curriculum  learning  prompts
+Curriculum  lea rning  is  a  tech nique  that  allows  a  model  to  learn  a
+complex  task  by  ﬁrst  training  on  simpler  tasks  and  gradually
+increasing  the  difﬁculty .
+T o use  curriculum  learning  prompts  with  ChatGPT , the  model
+should  be  provided  with  a  seq uence  of  tasks  that  gradually  increase  in
+difﬁculty . The  prompt  should  also  include  information  about  the
+desired  output , such  as  the  ﬁnal  task  to  be  accomplishe d  and  any
+speciﬁc  requirements  or  constraints .
+This  te chnique  is  useful  for  tasks  such  as  natural  la nguage
+processing , image  recognition , and  machine  learning .
+Prompt  Examples  and  their  Formula :
+Example  1: Curriculum  learning  for  text  generation
+T ask : Generate  text  that  is  consistent  with  a  speciﬁc  style
+Instructions : The  model  should  be  trained  on  simpler  styles
+before  moving  on  to  more  complex  styles
+Prompt  formula : "Use  curriculum  learning  to  generate  text  that
+is consistent  with  the  follo wing  styles  [ insert  styles ] in  the
+following  order  [ insert  order ] "
+Example  2: Curriculum  learning  for  language  translation
+T ask : T ranslate  text  from  one  language  to  another
+Instructions : T he  model  should  be  trained  on  simpler
+languages  before  moving  on  to  more  complex  languages
+Prompt  formul a : "Use  curriculum  learning  to  translate  text
+from  the  following  languages  [ insert  languages ] in  the  following
+order  [ insert  order ] "
+Example  3: Curriculum  learning  for  question  answering
+T ask : Generate  answer  to  a  questionInstructions : T he  model  should  be  trained  on  simpler
+questions  before  moving  on  to  more  complex  questions
+Prompt  formula : "Use  cur riculum  learning  to  gene rate
+answers  to  the  following  questions  [ insert  questions ] in  the
+following  order  [ insert  order ] "Chapter  21: Sentiment  analysis  prompts
+Sentiment  analysis  is  a  technique  that  allows  a  model  to  determine
+the emotional  tone  or  attitude  of  a  piece  of  text , such  as  whether  it  is
+positive , negative , or  neutral .
+T o use  sentiment  analysis  prompts  with  ChatGPT , the  model
+should  be  provided  with  a  pie ce  of  text  and  asked  to  classify  it  based
+on its  sentiment .
+The prompt  should  also  include  information  about  the  desired
+output , such  as  the  type  of  sentiment  to  be  detected  ( e . g . positive ,
+negative , neutral ) and  any  speciﬁc  requirements  or  constraints .
+Prompt  Examples  and  their  Formula :
+Example  1: Sentiment  analysis  of  customer  reviews
+T ask : Determine  the  sentiment  of  customer  reviews
+Instructions : The  model  sh ould  classify  the  reviews  as
+positive , negative , or  neutral
+Prompt  formula : "Perform  sen timent  analysis  on  the  following
+customer  reviews  [ insert  reviews ] and  classify  them  as  positive ,
+negative , or  neutral . "
+Example  2: Sentiment  analysis  of  tweets
+T ask : Determine  the  sentiment  of  tweets
+Instructions : The  model  should  classify  the  tweets  as  positive ,
+negative , or  neutral
+Prompt  formula : "Perform  sen timent  analysis  on  the  following
+tweets  [ insert  tweets ] and  classify  them  as  positive , negative , or
+neutral . "
+Example  3: Sentiment  analysis  of  product  reviews
+T ask : Determine  the  sentiment  of  product  reviews
+Instructions : The  model  sh ould  classify  the  reviews  as
+positive , negative , or  neutralPrompt  formula : "Perform  sen timent  analysis  on  the  following
+product  reviews  [ insert  reviews ] and  classify  them  as  positive ,
+negative , or  neutral . "
+This  te chnique  is  useful  for  tasks  such  as  natural  la nguage
+processing , customer  service , and  market  research .Chapter  22: Named  entity  recognition  prompts
+Named  entity  recognition  ( NER ) is  a  technique  that  allows  a  model
+to iden tify  and  classify  named  entities  in  text , such  as  people ,
+organizations , locations , and  dates .
+T o u se  named  entity  recognition  prompts  with  ChatGPT , the  model
+should  be  provided  with  a  piece  of  text  and  asked  to  i dentify  and
+classify  named  entities  within  the  text .
+The prompt  should  also  include  information  about  the  desired
+output , such  as  the  types  o f  named  entities  to  be  identiﬁed  ( e . g .
+people , organiz ations , locatio ns , dates ) and  any  speciﬁc  requirements
+or constraints .
+Prompt  Examples  and  their  Formula :
+Example  1: Named  entity  recognition  in  a  news  article
+T ask : Identify  and  classify  named  entities  in  a  news  article
+Instructions : The  model  should  identify  and  classify  peo ple ,
+organizations , locations , and  dates
+Prompt  formul a : "Perform  named  entity  recognition  on  the
+following  news  article  [ insert  article ] and  identify  and  classify
+people , organizations , locations , and  dates . "
+Example  2: Named  entity  recognition  in  a  legal  document
+T ask : Identify  and  classify  named  entities  in  a  legal  document
+Instructions : The  model  should  identify  and  classify  peo ple ,
+organizations , locations , and  dates
+Prompt  formul a : "Perform  named  entity  recognition  on  the
+following  lega l  document  [ insert  document ] and  identi fy  and
+classify  people , organizations , locations , and  dates . "
+Example  3: Named  entity  recognition  in  a  research  paper
+T ask : Identify  and  classify  named  entities  in  a  research  paperInstructions : The  model  should  identify  and  classify  peo ple ,
+organizations , locations , and  dates
+Prompt  formul a : "Perform  named  entity  recognition  on  the
+following  research  paper  [ insert  paper ] and  identify  and  classify
+people , organizations , locations , and  dates . "Chapter  23: T ext  classiﬁcation  prompts
+T ext classiﬁcat ion  is  a  technique  that  allows  a  model  to  categorize
+text into  dif ferent  classes  or  categories . This  technique  is  useful  for
+tasks  such  as  natural  language  processing , text  analytics , and
+sentiment  analysis .
+It's important  to  note  that  T ext  classiﬁcation  is  dif ferent  from
+sentiment  analysis . Sentiment  analysis  speciﬁcally  focus  on
+determining  the  sentiment  or  emotion  expressed  in  text .
+This  could  include  determining  whether  the  text  expresses  a
+positive , negative , or  neutral  sentiment . Sentiment  analysis  is  often
+used  in  the  con text  of  customer  reviews , social  media  post s , and  other
+forms  of  text  where  the  sentiment  expressed  is  important .
+T o u se  text  cla ssiﬁcation  prom pts  with  ChatGPT , the  model  should
+be provided  with  a  piece  of  text  and  asked  to  classify  it  based  on
+predeﬁned  categories  or  labels . The  prompt  should  also  include
+information  about  the  desired  output , such  as  the  number  of  classes
+or categories , and  any  speciﬁc  requirements  or  constraints .
+Prompt  Examples  and  their  Formula :
+Example  1: T ext  classiﬁcation  of  customer  reviews
+T ask : Classify  customer  reviews  into  dif ferent  categories  such
+as electronics , clothing  and  furniture
+Instructions : The  model  should  classify  the  reviews  based  on
+their  content
+Prompt  formula : "Perform  te xt  classiﬁcation  on  the  following
+customer  reviews  [ insert  reviews ] and  classify  them  into  dif ferent
+categories  such  as  electronics , clothing  and  furniture  based  on
+their  content . "
+Example  2: T ext  classiﬁcation  of  news  articles
+T ask : Classify  news  articles  into  dif ferent  categories  such  as
+sports , politics , and  entertainmentInstructions : The  model  should  classify  the  articles  based  on
+their  content
+Prompt  formula : "Perform  te xt  classiﬁcation  on  the  following
+news  articles  [ insert  articles ] and  classify  them  into  dif ferent
+categories  such  as  sports , politics , and  entertainment  based  on
+their  content . "
+Example  3: T ext  classiﬁcation  of  emails
+T ask : Classify  emails  into  dif ferent  categories  such  as  spam ,
+important , or  urgent
+Instructions : The  model  should  classify  the  emails  based  on
+their  content  and  sender
+Prompt  formula : "Perform  te xt  classiﬁcation  on  the  following
+emails  [ insert  emails ] and  classify  them  into  dif ferent  categories
+such  as  spam , important , or  urgent  based  on  their  content  and
+sender . "Chapter  24: T ext  generation  prompts
+T ext generation  prompts  are  related  to  several  other  prompt
+techniques  mentioned  in  this  book , such  as : Zero , One  an d  Few  Shot
+Prompting , Co ntrolled  generation  prompts , T ranslation  prompts ,
+Language  modeling  prompts , Sentence  completion  prompts .
+All thes e  prompts  are  related  because  they  all  involve  ge nerating
+text, bu t  they  dif fer  in  the  way  the  text  is  generated  and  the  speciﬁc
+requirements  or  constraints  that  are  placed  on  the  generated  text .
+T ext generatio n  prompts  can  be  used  to  ﬁne-tune  a  pre-trained
+model  or  to  train  a  new  model  for  speciﬁc  tasks .
+Prompt  Examples  and  their  Formula :
+Example  1: T ext  generation  for  story  writing
+T ask : Generate  a  story  based  on  a  given  prompt
+Instructions : The  story  shou ld  be  at  least  1000 words  and
+include  a  speciﬁc  set  of  characters  and  a  plot
+Prompt  formul a : "Generate  a  story  of  at  least  1000 words ,
+including  characters  [ insert  characters ] and  a  plot  [ insert  plot ]
+based  on  the  following  prompt  [ insert  prompt ]. "
+Example  2: T ext  generation  for  language  translation
+T ask : T ranslate  a  given  text  into  another  language
+Instructions : The  translation  should  be  accurate  and  idiomatic
+Prompt  formula : "T ranslate  the  following  text  [ insert  text ] into
+[ insert  target  language ] and  make  sure  that  it  is  accurate  and
+idiomatic . "
+Example  3: T ext  generation  for  text  completion
+T ask : Complete  a  given  text
+Instructions : The  generated  text  should  be  coherent  and
+consistent  with  the  input  textPrompt  formula : "Complete  the  following  text  [ insert  text ] and
+make  sure  that  it  is  coher ent  and  consistent  with  the  input
+text. "Chapter  26: W ord  prediction  promptsConclusion
+As we'v e  explo red  throughou t  this  book , prompt  engineering  is  a
+powerful  tool  to  get  high-quality  answers  from  language  models  like
+ChatGPT . By  carefully  craf ting  prompts  that  incorpora te  various
+techniques , we  can  guide  the  model  to  generate  text  that  is  tailored  to
+our speciﬁc  needs  and  requirements .
+In chapter  2, we  looked  at  how  instructions  prompts  can  be  used  to
+provide  clear  and  speciﬁc  guidance  to  the  model . In  chapter  3, we
+explored  how  role  prompts  ca n  be  used  to  generate  text  in  a  speciﬁc
+voice  or  style . In  chapter  4, we  examined  how  standard  prompts  can
+be used  as  a  starting  point  for  ﬁne-tuning  the  model's  performance .
+W e also  looked  at  several  advanced  prompt  techniques  such  as
+Zero , One  and  Few  Shot  P rompting , Self-Consistency , Seed-word
+Prompt , Knowledge  Generation  prompt , Knowledge  Integration
+prompts , Multiple  Choice  prompts , Interpretable  Soft  Prompts ,
+Controlled  generation  prompts , Question-answering  prompts ,
+Summarization  prompts , Dialogue  prompts , Adversarial  prompts ,
+Clustering  prompts , Reinforcement  learning  prompts , Curriculum
+learning  prompts , Sentiment  analysis  prompts , Named  entity
+recognition  prompts , and  T ext  classiﬁcation  prompts
+Each  of  these  techniques  can  be  used  in  dif ferent  ways  to  achieve
+a wide  range  of  dif ferent  results , and  as  you  continue  to  work  with
+ChatGPT  and  other  language  models , it's  worth  experimenting  with
+dif ferent  combi nations  of  techniques  to  see  what  works  best  for  your
+speciﬁc  use  case .
+Lastly  y ou  can  check  to  see  other  books  I  have  written  on  other
+topics .
+Thanks  for  reading  the  entire  book . See  you  in  my  other  books .
+ About  The  Author
+Ibrahim  John
+ 
+Ibrahim  John  is  the  author  of  "The  Art  of  Asking  ChatGPT  for  High-
+Quality  Answers : A  Complete  Guide  to  Prompt  Engineering
+T echniques" .  
+ 
+He was  born  in  T anzania  an d  is  a  well-known  ﬁgure  in  the  ﬁeld  of
+technology  and  business .  
+ 
+He is  the  founder  of  three  successful  companies : Nzunda
+T echnologies  Limited , Kingbest  Companye  Limited  and  Agrasa
+Agriculture  Limited .  
+ 
+With  hi s  extensive  knowledge  and  experience  in  the  ﬁeld , Ibrahim
+brings  a  unique  perspective  to  the  topic  of  prompt  engineering  and  its
+applications  in  language  mod eling . He  is  passionate  about  sharing  his
+knowledge  and  expertise  with  others  and  is  dedicated  to  helping
+people  underst and  and  utilize  the  power  of  ChatGPT  and  other  state-
+of-the-art  language  models .

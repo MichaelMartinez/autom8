@@ -1,0 +1,4077 @@
+# ---
+# Filename: F:/CODE/genetic_box_advanced/app.py
+# ---
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    Response,
+    make_response,
+    jsonify,
+)
+from markupsafe import escape
+from box import BoxMaker
+from rectangle import RectangleMaker
+import sqlite3
+import logging
+import svgwrite
+import os
+import json
+import click
+from flask.cli import with_appcontext
+
+# Setup logging
+logging.basicConfig(level=logging.ERROR, format="%(asctime)s-%(levelname)s-%(message)s")
+
+app = Flask(__name__)
+
+DATABASE = "generations.db"
+
+
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    with app.app_context():
+        db = get_db()
+        with app.open_resource("schema.sql", mode="r") as f:
+            db.cursor().executescript(f.read())
+        db.commit()
+
+
+def generate_svg_string(generation_id):
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations WHERE id = ?", (generation_id,))
+        generation = cur.fetchone()
+        if generation is None:
+            return None
+
+        panels = json.loads(generation["panels"])
+        dwg = svgwrite.Drawing(size=("2000mm", "2000mm"))
+        x_offset = 0
+        gap = 10
+
+        for panel, sizes in panels.items():
+            dwg.add(
+                dwg.rect(
+                    insert=(x_offset, 0),
+                    size=(sizes["width"], sizes["height"]),
+                    stroke="black",
+                    fill="none",
+                )
+            )
+            x_offset += sizes["width"] + gap
+
+        return dwg.tostring()
+
+
+@app.cli.command("init-db")
+@with_appcontext
+def init_db_command():
+    """Clear the existing data and create new tables."""
+    init_db()
+    click.echo("Initialized the database.")
+
+
+@app.route("/", methods=["GET"])
+def home():
+    return render_template("index.html")
+
+
+@app.route("/box", methods=["GET", "POST"])
+def box():
+    if request.method == "POST":
+        height = request.form.get("height")
+        width = request.form.get("width")
+        box_maker = BoxMaker(height, width)
+        dimensions, log_messages = box_maker.calculate_parts()
+        with get_db() as db:
+            db.execute(
+                "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+                (height, width, None, json.dumps(dimensions)),
+            )
+            db.commit()
+        return render_template(
+            "box.html", dimensions=dimensions, log_messages=log_messages
+        )
+    return render_template("box.html")
+
+
+@app.route("/case", methods=["GET", "POST"])
+def case():
+    if request.method == "POST":
+        height = request.form.get("height")
+        width = request.form.get("width")
+        desired_depth = request.form.get("desired_depth")
+        # Ensure the height, width, and desired_depth are valid numbers
+        try:
+            height = int(height)
+            width = int(width)
+            desired_depth = int(desired_depth)
+        except ValueError:
+            return render_template(
+                "case.html",
+                error="Please enter valid numbers for height, width, and depth.",
+            )
+
+        rectangle_maker = RectangleMaker(height, width, desired_depth)
+        (
+            dimensions_sets,
+            log_messages,
+            stock_material_plot,
+        ) = rectangle_maker.calculate_parts()
+
+        if not dimensions_sets:
+            return render_template(
+                "case.html",
+                error="Not enough suitable dimension sets could be generated.",
+                log_messages=log_messages,
+            )
+
+        with get_db() as db:
+            for dimensions in dimensions_sets:
+                db.execute(
+                    "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+                    (height, width, desired_depth, json.dumps(dimensions)),
+                )
+            db.commit()
+
+        return render_template(
+            "case.html",
+            dimensions_sets=dimensions_sets,
+            log_messages=log_messages,
+            stock_material_plot=stock_material_plot,
+        )
+    return render_template("case.html")
+
+
+@app.route("/generations", methods=["GET"])
+def generations():
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations")
+        rows = cur.fetchall()
+        generation_items = []
+        for row in rows:
+            generation = dict(row)  # Convert the Row object to a dictionary
+            generation["panels"] = json.loads(
+                generation["panels"]
+            )  # Deserialize the 'panels' JSON string
+            generation_items.append(
+                generation
+            )  # Append the modified dictionary to the list
+
+    return render_template("generations.html", generation_items=generation_items)
+
+
+@app.route("/download-svg/<int:generation_id>")
+def download_svg(generation_id):
+    svg_string = generate_svg_string(generation_id)
+    if svg_string is None:
+        return "SVG not found", 404
+
+    response = make_response(svg_string)
+    response.headers["Content-Type"] = "image/svg+xml"
+    response.headers[
+        "Content-Disposition"
+    ] = f'attachment; filename="panel_design_{generation_id}.svg"'
+    return response
+
+
+@app.route("/plot/<int:generation_id>")
+def plot(generation_id):
+    svg_string = generate_svg_string(generation_id)
+    if svg_string is None:
+        return "Generation not found", 404
+    return render_template(
+        "svg_display.html", svg_content=svg_string, generation_id=generation_id
+    )
+
+
+@app.route("/delete/<int:generation_id>", methods=["POST"])
+def delete_generation(generation_id):
+    with get_db() as db:
+        db.execute("DELETE FROM generations WHERE id = ?", (generation_id,))
+        db.commit()
+    return redirect(url_for("generations"))
+
+
+#############################
+###
+### API
+###
+#############################
+
+
+@app.route("/api/box", methods=["POST"])
+def api_box():
+    data = request.json
+    height = data.get("height")
+    width = data.get("width")
+
+    # Ensure height and width are provided and valid
+    if not height or not width:
+        return jsonify({"error": "Height and width are required"}), 400
+
+    try:
+        height = float(height)
+        width = float(width)
+    except ValueError:
+        return jsonify({"error": "Invalid height or width values"}), 400
+
+    box_maker = BoxMaker(height, width)
+    dimensions, log_messages = box_maker.calculate_parts()
+
+    # Insert into database (optional, based on your requirements)
+    # with get_db() as db:
+    #     db.execute(
+    #         "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+    #         (height, width, None, json.dumps(dimensions)),
+    #     )
+    #     db.commit()
+
+    return jsonify({"dimensions": dimensions, "log_messages": log_messages})
+
+
+@app.route("/api/case", methods=["POST"])
+def api_case():
+    data = request.json
+    height = data.get("height")
+    width = data.get("width")
+    desired_depth = data.get("desired_depth")
+
+    # Validating the input data
+    if not all([height, width, desired_depth]):
+        return jsonify({"error": "Height, width, and depth are required"}), 400
+
+    try:
+        height = int(height)
+        width = int(width)
+        desired_depth = int(desired_depth)
+    except ValueError:
+        return jsonify({"error": "Invalid height, width, or depth values"}), 400
+
+    rectangle_maker = RectangleMaker(height, width, desired_depth)
+    (
+        dimensions_sets,
+        log_messages,
+        stock_material_plot,
+    ) = rectangle_maker.calculate_parts()
+
+    if not dimensions_sets:
+        return (
+            jsonify(
+                {
+                    "error": "Not enough suitable dimension sets could be generated",
+                    "log_messages": log_messages,
+                }
+            ),
+            400,
+        )
+
+    # Insert into database (optional, based on your requirements)
+    with get_db() as db:
+        for dimensions in dimensions_sets:
+            db.execute(
+                "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+                (height, width, desired_depth, json.dumps(dimensions)),
+            )
+        db.commit()
+
+    return jsonify({"dimensions_sets": dimensions_sets, "log_messages": log_messages})
+
+
+@app.route("/api/generations", methods=["GET"])
+def api_generations():
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations")
+        rows = cur.fetchall()
+        generations = [dict(row) for row in rows]
+    return jsonify(generations)
+
+
+@app.route("/api/download-svg/<int:generation_id>")
+def api_download_svg(generation_id):
+    svg_string = generate_svg_string(generation_id)
+    if svg_string is None:
+        return jsonify({"error": "SVG not found"}), 404
+    # You might want to return a URL to download or the SVG data itself
+    return jsonify({"svg": svg_string})
+
+
+@app.route("/api/delete/<int:generation_id>", methods=["DELETE"])
+def api_delete_generation(generation_id):
+    with get_db() as db:
+        db.execute("DELETE FROM generations WHERE id = ?", (generation_id,))
+        db.commit()
+    return jsonify({"message": "Generation deleted"})
+
+
+@app.route("/makerjs-display", methods=["GET"])
+def makerjs_display():
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations")
+        generations = cur.fetchall()
+    return render_template("makerjs_display.html", generations=generations)
+
+
+if __name__ == "__main__":
+    init_db()  # Ensure the database is initialized
+    app.run(debug=True)
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/append-file.py
+# ---
+
+import tkinter as tk
+from tkinter import filedialog
+import os
+
+# Configure logging
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+
+# Function to strip white space from file content
+def strip_whitespace(content):
+    return "".join(content.split())
+
+
+# Function to process files and append content to the output file
+def process_files(file_paths):
+    try:
+        # Extract file names without extensions
+        file_names = [os.path.splitext(os.path.basename(f))[0] for f in file_paths]
+
+        # Create the output file name
+        output_file_name = "-".join(file_names) + ".txt"
+
+        # Open the output file in write mode
+        with open(output_file_name, "w") as output_file:
+            for file_path in file_paths:
+                logging.info(f"Processing {file_path}")
+                with open(file_path, "r") as file:
+                    output_file.write(
+                        os.path.basename(file_path) + "\n"
+                    )  # Write the file name
+                    file_content = file.read()
+                    output_file.write(
+                        strip_whitespace(file_content) + "\n"
+                    )  # Write the stripped content
+        logging.info(f"All files have been processed and saved to {output_file_name}")
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+
+
+def main():
+    # Set up the GUI for file selection
+    root = tk.Tk()
+    root.withdraw()  # We don't want a full GUI, so keep the root window from appearing
+    root.update()
+
+    # Show an "Open" dialog box and return the path to the selected file(s)
+    file_paths = filedialog.askopenfilenames(
+        filetypes=[("Text files", "*.txt;*.py;*.css;*.html;*.yaml")],
+        title="Choose files",
+    )
+
+    # Process the files if any were selected
+    if file_paths:
+        process_files(file_paths)
+    else:
+        logging.info("No files were selected.")
+
+    root.destroy()
+
+
+if __name__ == "__main__":
+    main()
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/box.py
+# ---
+
+# Importing required modules from DEAP and Python standard library
+from deap import base, creator, tools, algorithms
+from random import randint
+
+
+# Class definition for BoxMaker
+class BoxMaker:
+    # Initialization method for the class
+    def __init__(self, height, width):
+        self.height = int(height)  # Initialize the height of the material
+        self.width = int(width)  # Initialize the width of the material
+
+    # Method to calculate parts dimensions
+    def calculate_parts(self):
+        log_messages = []
+        # Create a new fitness class extending base.Fitness with maximization goal
+        creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+        # Create a new individual class extending list with the new fitness class
+        creator.create("Individual", list, fitness=creator.FitnessMax)
+
+        # Initialize toolbox
+        toolbox = base.Toolbox()
+        # Register attribute generator for integers within a given range
+        toolbox.register("attr_int", randint, 1, min(self.height, self.width) // 2)
+        # Register individual and population initializers to the toolbox
+        toolbox.register(
+            "individual", tools.initRepeat, creator.Individual, toolbox.attr_int, n=6
+        )
+        toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+        # Define evaluation function
+        def evalBox(individual):
+            total_area = 0
+            # Loop through pairs of height and width for each side
+            for h, w in zip(individual[::2], individual[1::2]):
+                total_area += h * w * 2  # Area for both panels of the same dimension
+            return (total_area,)
+
+        # Register evaluation, crossover, mutation and selection methods to the toolbox
+        toolbox.register("evaluate", evalBox)
+        toolbox.register("mate", tools.cxTwoPoint)
+        toolbox.register(
+            "mutate",
+            tools.mutUniformInt,
+            low=1,
+            up=min(self.height, self.width) // 2,
+            indpb=0.2,
+        )
+        toolbox.register("select", tools.selTournament, tournsize=3)
+
+        # Initialize population
+        population = toolbox.population(n=300)
+        # Execute the genetic algorithm
+        algorithms.eaSimple(
+            population, toolbox, cxpb=0.5, mutpb=0.2, ngen=40, verbose=False
+        )
+
+        # Select the best individual from the final population
+        best_ind = tools.selBest(population, 1)[0]
+        print(f"Best individual: {best_ind}")
+
+        # Map best individual's dimensions to corresponding box parts
+        dimensions = {
+            "Front Panel": (best_ind[0], best_ind[1]),
+            "Back Panel": (best_ind[0], best_ind[1]),
+            "Left Side Panel": (best_ind[2], best_ind[3]),
+            "Right Side Panel": (best_ind[2], best_ind[3]),
+            "Top Panel": (best_ind[4], best_ind[5]),
+            "Bottom Panel": (best_ind[4], best_ind[5]),
+        }
+
+        print(f"Dimensions of box parts: {dimensions}")
+
+        # Calculate and display summary statistics
+        # total_parts_area = sum([h * w for h, w in dimensions.values()])
+        # total_initial_area = self.height * self.width
+        # print(f"Total area of parts: {total_parts_area}")
+        # print(f"Total initial area: {total_initial_area}")
+        # print(f"Utilization: {total_parts_area / total_initial_area * 100:.2f}%")
+
+        # Adding log messages
+        log_messages.append(f"Best individual: {best_ind}")
+        log_messages.append(f"Dimensions of box parts: {dimensions}")
+
+        total_parts_area = sum([h * w for h, w in dimensions.values()])
+        total_initial_area = self.height * self.width
+
+        log_messages.append(f"Total area of parts: {total_parts_area}")
+        log_messages.append(f"Total initial area: {total_initial_area}")
+        log_messages.append(
+            f"Utilization: {total_parts_area / total_initial_area * 100:.2f}%"
+        )
+
+        return dimensions, log_messages
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/README.md
+# ---
+
+# Genetic Woodworker
+
+## What does it do?
+
+The Genetic Woodworker is an app that helps woodworkers use their material most wisely. It uses genetic algorithms to determine the best size and fit of parts within the stock material specified.
+
+### Features
+
+1. In box maker, the app will generate the biggest box that can be made with the stock material dimensions specified by the user
+2. In case maker, the app will adhere to any critical dimension specified by the user and generate the biggest case that can be made with the stock material dimensions as specified by the user.
+
+### Planned Features
+
+1. Visualization of the generated box or case in 2D and 3D
+2. Downloadable plans
+3. Top 10 genetic dimensions for user to choose from
+
+### Technology
+
+1. DEAP - Genetic Algorithm Library
+2. Bulma - CSS Library
+3. RectPack - Bin Packing Library
+4. Maker.js - CNC / Laser software
+5. Svgwrite - SVGwrite
+6. Flask - Web application backend
+
+### To Run
+
+1. `cd Genetic_Woodworker`
+2. `flask run`
+3. Go to localhost:5000
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/rectangle.py
+# ---
+
+import logging
+from deap import base, creator, tools, algorithms
+from random import randint
+from math import fabs
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+GOLDEN_RATIO = 1.618
+
+# Ensure the FitnessMax and Individual classes are created only once.
+if not hasattr(creator, "FitnessMax"):
+    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+if not hasattr(creator, "Individual"):
+    creator.create("Individual", list, fitness=creator.FitnessMax)
+
+
+class RectangleMaker:
+    def __init__(self, height, width, desired_depth):
+        self.height = int(height)
+        self.width = int(width)
+        self.desired_depth = int(desired_depth)
+        self.seen_dimensions = {}
+
+    def calculate_parts(self):
+        logging.info("Starting calculation of parts.")
+        log_messages = []  # Initialize log message list
+        selected_dimensions = []
+
+        toolbox = base.Toolbox()
+        toolbox.register("attr_height", randint, 1, self.height)
+        toolbox.register("attr_width", randint, 1, self.width)
+        toolbox.register(
+            "individual",
+            tools.initCycle,
+            creator.Individual,
+            (toolbox.attr_height, toolbox.attr_width),
+            n=1,
+        )
+        toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+        # Define the stats variable before using it
+        stats = tools.Statistics(lambda ind: ind.fitness.values)
+        stats.register("min", min)
+        stats.register("max", max)
+
+        def evalRectangle(individual):
+            front_height, front_width = individual
+
+            # Check if the front/back panels fit within the stock material
+            if front_height > self.height or front_width > self.width:
+                return (0,)  # Invalid individual due to size constraints
+
+            # Check if the side panels fit within the stock material after accounting for the front/back panels
+            if 2 * self.desired_depth + front_height > self.height:
+                return (0,)  # Invalid, side panels don't fit in height
+
+            # Check if the top/bottom panels fit within the stock material after accounting for the front/back panels
+            if 2 * self.desired_depth + front_width > self.width:
+                return (0,)  # Invalid, top and bottom panels don't fit in width
+
+            # Calculate how close we are to the golden ratio
+            golden_diff = fabs((front_height / front_width) - GOLDEN_RATIO)
+
+            # Calculate areas for each set of pieces
+            side_area = 2 * (front_height * self.desired_depth)  # Two side panels
+            front_back_area = 2 * (front_height * front_width)   # Front and back panels
+            top_bottom_area = 2 * (front_width * self.desired_depth)  # Top and bottom panels
+            total_area = side_area + front_back_area + top_bottom_area
+            unused_area = (self.height * self.width) - total_area
+
+            # Introduce a penalty for dimensions that have been seen before
+            dimensions_tuple = (front_height, front_width)
+            penalty = self.seen_dimensions.get(dimensions_tuple, 0) * 100
+
+            # Adjust golden ratio penalty scaling
+            golden_ratio_penalty = golden_diff * 100  # Use a smaller scaling factor
+
+            # The fitness value is a combination of maximizing total area used and minimizing waste and penalties
+            fitness_value = total_area - golden_ratio_penalty - penalty - unused_area
+
+            logging.debug(f"Evaluating individual: {individual} with fitness: {fitness_value}, Unused Area: {unused_area}")
+
+            return (fitness_value,)
+
+        toolbox.register("evaluate", evalRectangle)
+        toolbox.register("mate", tools.cxTwoPoint)
+        toolbox.register("mutate", tools.mutUniformInt,
+                         low=1,
+                         up=min(self.height, self.width),  # Adjust mutation range
+                         indpb=0.2)
+        toolbox.register("select", tools.selBest)
+
+        mu = 300
+        lambda_ = 2 * mu
+        population = toolbox.population(n=mu)
+
+        halloffame = tools.HallOfFame(3)  # Keep the top 3 individuals
+
+        try:
+            # Correct the unpacking of returned values from the function
+            population, logbook = algorithms.eaMuPlusLambda(
+                population,
+                toolbox,
+                mu=mu,
+                lambda_=lambda_,
+                cxpb=0.5,
+                mutpb=0.5,
+                ngen=40,
+                stats=stats,
+                halloffame=halloffame,
+                verbose=False,
+            )
+            # log_messages.extend(logbook.stream) # Uncomment and modify if logbook entries are needed
+        except Exception as e:
+            logging.error(
+                f"An error occurred during the genetic algorithm execution: {e}"
+            )
+            return None, []
+
+        # Replace the selection of the top individuals with selection from the hall of fame
+        top_individuals = halloffame.items
+
+        for ind in top_individuals:
+            log_messages.append(f"Individual: {ind}, Fitness: {ind.fitness.values[0]}")
+            if ind.fitness.values[0] > 0:
+                dimensions_dict = {
+                    "Front Panel": {"height": ind[0], "width": ind[1]},
+                    "Back Panel": {"height": ind[0], "width": ind[1]},
+                    "Left Side Panel": {"height": ind[0], "width": self.desired_depth},
+                    "Right Side Panel": {"height": ind[0], "width": self.desired_depth},
+                    "Top Panel": {"height": ind[1], "width": self.desired_depth},
+                    "Bottom Panel": {"height": ind[1], "width": self.desired_depth},
+                }
+                if dimensions_dict not in selected_dimensions:
+                    selected_dimensions.append(dimensions_dict)
+                    log_messages.append(f"Unique Dimensions: {dimensions_dict}")
+                    # Apply a decay to the penalty for seen dimensions
+                    self.seen_dimensions[(ind[0], ind[1])] = (
+                        self.seen_dimensions.get((ind[0], ind[1]), 0) - 1
+                    )
+
+        if not selected_dimensions:
+            logging.warning("No suitable unique individuals generated.")
+            return None, []
+
+        logging.info("Calculation completed successfully.")
+        stock_material_plot = {"height": self.height, "width": self.width}
+        return selected_dimensions, log_messages, stock_material_plot
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/requirements.txt
+# ---
+
+Flask
+deap
+rectpack
+plotly
+svgwrite
+markupsafe
+click
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/schema.sql
+# ---
+
+DROP TABLE IF EXISTS generations;
+CREATE TABLE generations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    height TEXT NOT NULL,
+    width TEXT NOT NULL,
+    depth TEXT,
+    panels TEXT NOT NULL
+);
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/_compressed_output.txt
+# ---
+
+# --- # filename: f:\code\genetic_box_advanced\app.py # --- flask import ( flask, render_template, request, redirect, url_for, response, make_response, jsonify, ) markupsafe import escape box import boxmaker rectangle import rectanglemaker import sqlite3 import logging import svgwrite import os import json import click flask.cli import with_appcontext # setup logging logging.basicconfig(level=logging.error, format="%(asctime)s-%(levelname)s-%(message)s") app = flask(__name__) database = "generations.db" def get_db(): conn = sqlite3.connect(database) conn.row_factory = sqlite3.row return conn def init_db(): app.app_context(): db = get_db() app.open_resource("schema.sql", mode="r") f: db.cursor().executescript(f.read()) db.commit() def generate_svg_string(generation_id): get_db() db: cur = db.execute("select * generations id = ?", (generation_id,)) generation = cur.fetchone() generation none: return none panels = json.loads(generation["panels"]) dwg = svgwrite.drawing(size=("2000mm", "2000mm")) x_offset = 0 gap = 10 panel, sizes panels.items(): dwg.add( dwg.rect( insert=(x_offset, 0), size=(sizes["width"], sizes["height"]), stroke="black", fill="none", ) ) x_offset += sizes["width"] + gap return dwg.tostring() @app.cli.command("init-db") @with_appcontext def init_db_command(): """clear existing data create new tables.""" init_db() click.echo("initialized database.") @app.route("/", methods=["get"]) def home(): return render_template("index.html") @app.route("/box", methods=["get", "post"]) def box(): request.method == "post": height = request.form.get("height") width = request.form.get("width") box_maker = boxmaker(height, width) dimensions, log_messages = box_maker.calculate_parts() get_db() db: db.execute( "insert generations (height, width, depth, panels) values (?, ?, ?, ?)", (height, width, none, json.dumps(dimensions)), ) db.commit() return render_template( "box.html", dimensions=dimensions, log_messages=log_messages ) return render_template("box.html") @app.route("/case", methods=["get", "post"]) def case(): request.method == "post": height = request.form.get("height") width = request.form.get("width") desired_depth = request.form.get("desired_depth") # ensure height, width, desired_depth valid numbers try: height = int(height) width = int(width) desired_depth = int(desired_depth) except valueerror: return render_template( "case.html", error="please enter valid numbers height, width, depth.", ) rectangle_maker = rectanglemaker(height, width, desired_depth) ( dimensions_sets, log_messages, stock_material_plot, ) = rectangle_maker.calculate_parts() dimensions_sets: return render_template( "case.html", error="not enough suitable dimension sets could generated.", log_messages=log_messages, ) get_db() db: dimensions dimensions_sets: db.execute( "insert generations (height, width, depth, panels) values (?, ?, ?, ?)", (height, width, desired_depth, json.dumps(dimensions)), ) db.commit() return render_template( "case.html", dimensions_sets=dimensions_sets, log_messages=log_messages, stock_material_plot=stock_material_plot, ) return render_template("case.html") @app.route("/generations", methods=["get"]) def generations(): get_db() db: cur = db.execute("select * generations") rows = cur.fetchall() generation_items = [] row rows: generation = dict(row) # convert row object dictionary generation["panels"] = json.loads( generation["panels"] ) # deserialize 'panels' json string generation_items.append( generation ) # append modified dictionary list return render_template("generations.html", generation_items=generation_items) @app.route("/download-svg/<int:generation_id>") def download_svg(generation_id): svg_string = generate_svg_string(generation_id) svg_string none: return "svg found", 404 response = make_response(svg_string) response.headers["content-type"] = "image/svg+xml" response.headers[ "content-disposition" ] = f'attachment; filename="panel_design_{generation_id}.svg"' return response @app.route("/plot/<int:generation_id>") def plot(generation_id): svg_string = generate_svg_string(generation_id) svg_string none: return "generation found", 404 return render_template( "svg_display.html", svg_content=svg_string, generation_id=generation_id ) @app.route("/delete/<int:generation_id>", methods=["post"]) def delete_generation(generation_id): get_db() db: db.execute("delete generations id = ?", (generation_id,)) db.commit() return redirect(url_for("generations")) ############################# ### ### api ### ############################# @app.route("/api/box", methods=["post"]) def api_box(): data = request.json height = data.get("height") width = data.get("width") # ensure height width provided valid height width: return jsonify({"error": "height width required"}), 400 try: height = float(height) width = float(width) except valueerror: return jsonify({"error": "invalid height width values"}), 400 box_maker = boxmaker(height, width) dimensions, log_messages = box_maker.calculate_parts() # insert database (optional, based requirements) # get_db() db: # db.execute( # "insert generations (height, width, depth, panels) values (?, ?, ?, ?)", # (height, width, none, json.dumps(dimensions)), # ) # db.commit() return jsonify({"dimensions": dimensions, "log_messages": log_messages}) @app.route("/api/case", methods=["post"]) def api_case(): data = request.json height = data.get("height") width = data.get("width") desired_depth = data.get("desired_depth") # validating input data all([height, width, desired_depth]): return jsonify({"error": "height, width, depth required"}), 400 try: height = int(height) width = int(width) desired_depth = int(desired_depth) except valueerror: return jsonify({"error": "invalid height, width, depth values"}), 400 rectangle_maker = rectanglemaker(height, width, desired_depth) ( dimensions_sets, log_messages, stock_material_plot, ) = rectangle_maker.calculate_parts() dimensions_sets: return ( jsonify( { "error": "not enough suitable dimension sets could generated", "log_messages": log_messages, } ), 400, ) # insert database (optional, based requirements) get_db() db: dimensions dimensions_sets: db.execute( "insert generations (height, width, depth, panels) values (?, ?, ?, ?)", (height, width, desired_depth, json.dumps(dimensions)), ) db.commit() return jsonify({"dimensions_sets": dimensions_sets, "log_messages": log_messages}) @app.route("/api/generations", methods=["get"]) def api_generations(): get_db() db: cur = db.execute("select * generations") rows = cur.fetchall() generations = [dict(row) row rows] return jsonify(generations) @app.route("/api/download-svg/<int:generation_id>") def api_download_svg(generation_id): svg_string = generate_svg_string(generation_id) svg_string none: return jsonify({"error": "svg found"}), 404 # might want return url download svg data return jsonify({"svg": svg_string}) @app.route("/api/delete/<int:generation_id>", methods=["delete"]) def api_delete_generation(generation_id): get_db() db: db.execute("delete generations id = ?", (generation_id,)) db.commit() return jsonify({"message": "generation deleted"}) @app.route("/makerjs-display", methods=["get"]) def makerjs_display(): get_db() db: cur = db.execute("select * generations") generations = cur.fetchall() return render_template("makerjs_display.html", generations=generations) __name__ == "__main__": init_db() # ensure database initialized app.run(debug=true) # --- # filename: f:\code\genetic_box_advanced\append-file.py # --- import tkinter tk tkinter import filedialog import os # configure logging import logging logging.basicconfig( level=logging.info, format="%(asctime)s - %(levelname)s - %(message)s" ) # function strip white space file content def strip_whitespace(content): return "".join(content.split()) # function process files append content output file def process_files(file_paths): try: # extract file names without extensions file_names = [os.path.splitext(os.path.basename(f))[0] f file_paths] # create output file name output_file_name = "-".join(file_names) + ".txt" # open output file write mode open(output_file_name, "w") output_file: file_path file_paths: logging.info(f"processing {file_path}") open(file_path, "r") file: output_file.write( os.path.basename(file_path) + "\n" ) # write file name file_content = file.read() output_file.write( strip_whitespace(file_content) + "\n" ) # write stripped content logging.info(f"all files processed saved {output_file_name}") except exception e: logging.error(f"an error occurred: {e}") def main(): # set gui file selection root = tk.tk() root.withdraw() # want full gui, keep root window appearing root.update() # show "open" dialog box return path selected file(s) file_paths = filedialog.askopenfilenames( filetypes=[("text files", "*.txt;*.py;*.css;*.html;*.yaml")], title="choose files", ) # process files selected file_paths: process_files(file_paths) else: logging.info("no files selected.") root.destroy() __name__ == "__main__": main() # --- # filename: f:\code\genetic_box_advanced\box.py # --- # importing required modules deap python standard library deap import base, creator, tools, algorithms random import randint # class definition boxmaker class boxmaker: # initialization method class def __init__(self, height, width): self.height = int(height) # initialize height material self.width = int(width) # initialize width material # method calculate parts dimensions def calculate_parts(self): log_messages = [] # create new fitness class extending base.fitness maximization goal creator.create("fitnessmax", base.fitness, weights=(1.0,)) # create new individual class extending list new fitness class creator.create("individual", list, fitness=creator.fitnessmax) # initialize toolbox toolbox = base.toolbox() # register attribute generator integers within given range toolbox.register("attr_int", randint, 1, min(self.height, self.width) // 2) # register individual population initializers toolbox toolbox.register( "individual", tools.initrepeat, creator.individual, toolbox.attr_int, n=6 ) toolbox.register("population", tools.initrepeat, list, toolbox.individual) # define evaluation function def evalbox(individual): total_area = 0 # loop pairs height width side h, w zip(individual[::2], individual[1::2]): total_area += h * w * 2 # area panels dimension return (total_area,) # register evaluation, crossover, mutation selection methods toolbox toolbox.register("evaluate", evalbox) toolbox.register("mate", tools.cxtwopoint) toolbox.register( "mutate", tools.mutuniformint, low=1, up=min(self.height, self.width) // 2, indpb=0.2, ) toolbox.register("select", tools.seltournament, tournsize=3) # initialize population population = toolbox.population(n=300) # execute genetic algorithm algorithms.easimple( population, toolbox, cxpb=0.5, mutpb=0.2, ngen=40, verbose=false ) # select best individual final population best_ind = tools.selbest(population, 1)[0] print(f"best individual: {best_ind}") # map best individual's dimensions corresponding box parts dimensions = { "front panel": (best_ind[0], best_ind[1]), "back panel": (best_ind[0], best_ind[1]), "left side panel": (best_ind[2], best_ind[3]), "right side panel": (best_ind[2], best_ind[3]), "top panel": (best_ind[4], best_ind[5]), "bottom panel": (best_ind[4], best_ind[5]), } print(f"dimensions box parts: {dimensions}") # calculate display summary statistics # total_parts_area = sum([h * w h, w dimensions.values()]) # total_initial_area = self.height * self.width # print(f"total area parts: {total_parts_area}") # print(f"total initial area: {total_initial_area}") # print(f"utilization: {total_parts_area / total_initial_area * 100:.2f}%") # adding log messages log_messages.append(f"best individual: {best_ind}") log_messages.append(f"dimensions box parts: {dimensions}") total_parts_area = sum([h * w h, w dimensions.values()]) total_initial_area = self.height * self.width log_messages.append(f"total area parts: {total_parts_area}") log_messages.append(f"total initial area: {total_initial_area}") log_messages.append( f"utilization: {total_parts_area / total_initial_area * 100:.2f}%" ) return dimensions, log_messages # --- # filename: f:\code\genetic_box_advanced\readme.md # --- # genetic woodworker ## do? genetic woodworker app helps woodworkers use material wisely. uses genetic algorithms determine best size fit parts within stock material specified. ### features 1. box maker, app generate biggest box made stock material dimensions specified user 2. case maker, app adhere critical dimension specified user generate biggest case made stock material dimensions specified user. ### planned features 1. visualization generated box case 2d 3d 2. downloadable plans 3. top 10 genetic dimensions user choose ### technology 1. deap - genetic algorithm library 2. bulma - css library 3. rectpack - bin packing library 4. maker.js - cnc / laser software 5. svgwrite - svgwrite 6. flask - web application backend ### run 1. `cd genetic_woodworker` 2. `flask run` 3. go localhost:5000 # --- # filename: f:\code\genetic_box_advanced\rectangle.py # --- import logging deap import base, creator, tools, algorithms random import randint math import fabs # configure logging logging.basicconfig( level=logging.info, format="%(asctime)s - %(levelname)s - %(message)s" ) golden_ratio = 1.618 # ensure fitnessmax individual classes created once. hasattr(creator, "fitnessmax"): creator.create("fitnessmax", base.fitness, weights=(1.0,)) hasattr(creator, "individual"): creator.create("individual", list, fitness=creator.fitnessmax) class rectanglemaker: def __init__(self, height, width, desired_depth): self.height = int(height) self.width = int(width) self.desired_depth = int(desired_depth) self.seen_dimensions = {} def calculate_parts(self): logging.info("starting calculation parts.") log_messages = [] # initialize log message list selected_dimensions = [] toolbox = base.toolbox() toolbox.register("attr_height", randint, 1, self.height) toolbox.register("attr_width", randint, 1, self.width) toolbox.register( "individual", tools.initcycle, creator.individual, (toolbox.attr_height, toolbox.attr_width), n=1, ) toolbox.register("population", tools.initrepeat, list, toolbox.individual) # define stats variable using stats = tools.statistics(lambda ind: ind.fitness.values) stats.register("min", min) stats.register("max", max) def evalrectangle(individual): front_height, front_width = individual # check front/back panels fit within stock material front_height > self.height front_width > self.width: return (0,) # invalid individual due size constraints # check side panels fit within stock material accounting front/back panels 2 * self.desired_depth + front_height > self.height: return (0,) # invalid, side panels fit height # check top/bottom panels fit within stock material accounting front/back panels 2 * self.desired_depth + front_width > self.width: return (0,) # invalid, top bottom panels fit width # calculate close golden ratio golden_diff = fabs((front_height / front_width) - golden_ratio) # calculate areas set pieces side_area = 2 * (front_height * self.desired_depth) # two side panels front_back_area = 2 * (front_height * front_width) # front back panels top_bottom_area = 2 * (front_width * self.desired_depth) # top bottom panels total_area = side_area + front_back_area + top_bottom_area unused_area = (self.height * self.width) - total_area # introduce penalty dimensions seen dimensions_tuple = (front_height, front_width) penalty = self.seen_dimensions.get(dimensions_tuple, 0) * 100 # adjust golden ratio penalty scaling golden_ratio_penalty = golden_diff * 100 # use smaller scaling factor # fitness value combination maximizing total area used minimizing waste penalties fitness_value = total_area - golden_ratio_penalty - penalty - unused_area logging.debug(f"evaluating individual: {individual} fitness: {fitness_value}, unused area: {unused_area}") return (fitness_value,) toolbox.register("evaluate", evalrectangle) toolbox.register("mate", tools.cxtwopoint) toolbox.register("mutate", tools.mutuniformint, low=1, up=min(self.height, self.width), # adjust mutation range indpb=0.2) toolbox.register("select", tools.selbest) mu = 300 lambda_ = 2 * mu population = toolbox.population(n=mu) halloffame = tools.halloffame(3) # keep top 3 individuals try: # correct unpacking returned values function population, logbook = algorithms.eamupluslambda( population, toolbox, mu=mu, lambda_=lambda_, cxpb=0.5, mutpb=0.5, ngen=40, stats=stats, halloffame=halloffame, verbose=false, ) # log_messages.extend(logbook.stream) # uncomment modify logbook entries needed except exception e: logging.error( f"an error occurred genetic algorithm execution: {e}" ) return none, [] # replace selection top individuals selection hall fame top_individuals = halloffame.items ind top_individuals: log_messages.append(f"individual: {ind}, fitness: {ind.fitness.values[0]}") ind.fitness.values[0] > 0: dimensions_dict = { "front panel": {"height": ind[0], "width": ind[1]}, "back panel": {"height": ind[0], "width": ind[1]}, "left side panel": {"height": ind[0], "width": self.desired_depth}, "right side panel": {"height": ind[0], "width": self.desired_depth}, "top panel": {"height": ind[1], "width": self.desired_depth}, "bottom panel": {"height": ind[1], "width": self.desired_depth}, } dimensions_dict selected_dimensions: selected_dimensions.append(dimensions_dict) log_messages.append(f"unique dimensions: {dimensions_dict}") # apply decay penalty seen dimensions self.seen_dimensions[(ind[0], ind[1])] = ( self.seen_dimensions.get((ind[0], ind[1]), 0) - 1 ) selected_dimensions: logging.warning("no suitable unique individuals generated.") return none, [] logging.info("calculation completed successfully.") stock_material_plot = {"height": self.height, "width": self.width} return selected_dimensions, log_messages, stock_material_plot # --- # filename: f:\code\genetic_box_advanced\requirements.txt # --- flask deap rectpack plotly svgwrite markupsafe click # --- # filename: f:\code\genetic_box_advanced\schema.sql # --- drop table exists generations; create table generations ( id integer primary key autoincrement, height text null, width text null, depth text, panels text null ); # --- # filename: f:\code\genetic_box_advanced\_uncompressed_output.txt # --- # --- # filename: f:\code\genetic_box_advanced\app.py # --- flask import ( flask, render_template, request, redirect, url_for, response, make_response, jsonify, ) markupsafe import escape box import boxmaker rectangle import rectanglemaker import sqlite3 import logging import svgwrite import os import json import click flask.cli import with_appcontext # setup logging logging.basicconfig(level=logging.error, format="%(asctime)s-%(levelname)s-%(message)s") app = flask(__name__) database = "generations.db" def get_db(): conn = sqlite3.connect(database) conn.row_factory = sqlite3.row return conn def init_db(): app.app_context(): db = get_db() app.open_resource("schema.sql", mode="r") f: db.cursor().executescript(f.read()) db.commit() def generate_svg_string(generation_id): get_db() db: cur = db.execute("select * generations id = ?", (generation_id,)) generation = cur.fetchone() generation none: return none panels = json.loads(generation["panels"]) dwg = svgwrite.drawing(size=("2000mm", "2000mm")) x_offset = 0 gap = 10 panel, sizes panels.items(): dwg.add( dwg.rect( insert=(x_offset, 0), size=(sizes["width"], sizes["height"]), stroke="black", fill="none", ) ) x_offset += sizes["width"] + gap return dwg.tostring() @app.cli.command("init-db") @with_appcontext def init_db_command(): """clear existing data create new tables.""" init_db() click.echo("initialized database.") @app.route("/", methods=["get"]) def home(): return render_template("index.html") @app.route("/box", methods=["get", "post"]) def box(): request.method == "post": height = request.form.get("height") width = request.form.get("width") box_maker = boxmaker(height, width) dimensions, log_messages = box_maker.calculate_parts() get_db() db: db.execute( "insert generations (height, width, depth, panels) values (?, ?, ?, ?)", (height, width, none, json.dumps(dimensions)), ) db.commit() return render_template( "box.html", dimensions=dimensions, log_messages=log_messages ) return render_template("box.html") @app.route("/case", methods=["get", "post"]) def case(): request.method == "post": height = request.form.get("height") width = request.form.get("width") desired_depth = request.form.get("desired_depth") # ensure height, width, desired_depth valid numbers try: height = int(height) width = int(width) desired_depth = int(desired_depth) except valueerror: return render_template( "case.html", error="please enter valid numbers height, width, depth.", ) rectangle_maker = rectanglemaker(height, width, desired_depth) ( dimensions_sets, log_messages, stock_material_plot, ) = rectangle_maker.calculate_parts() dimensions_sets: return render_template( "case.html", error="not enough suitable dimension sets could generated.", log_messages=log_messages, ) get_db() db: dimensions dimensions_sets: db.execute( "insert generations (height, width, depth, panels) values (?, ?, ?, ?)", (height, width, desired_depth, json.dumps(dimensions)), ) db.commit() return render_template( "case.html", dimensions_sets=dimensions_sets, log_messages=log_messages, stock_material_plot=stock_material_plot, ) return render_template("case.html") @app.route("/generations", methods=["get"]) def generations(): get_db() db: cur = db.execute("select * generations") rows = cur.fetchall() generation_items = [] row rows: generation = dict(row) # convert row object dictionary generation["panels"] = json.loads( generation["panels"] ) # deserialize 'panels' json string generation_items.append( generation ) # append modified dictionary list return render_template("generations.html", generation_items=generation_items) @app.route("/download-svg/<int:generation_id>") def download_svg(generation_id): svg_string = generate_svg_string(generation_id) svg_string none: return "svg found", 404 response = make_response(svg_string) response.headers["content-type"] = "image/svg+xml" response.headers[ "content-disposition" ] = f'attachment; filename="panel_design_{generation_id}.svg"' return response @app.route("/plot/<int:generation_id>") def plot(generation_id): svg_string = generate_svg_string(generation_id) svg_string none: return "generation found", 404 return render_template( "svg_display.html", svg_content=svg_string, generation_id=generation_id ) @app.route("/delete/<int:generation_id>", methods=["post"]) def delete_generation(generation_id): get_db() db: db.execute("delete generations id = ?", (generation_id,)) db.commit() return redirect(url_for("generations")) ############################# ### ### api ### ############################# @app.route("/api/box", methods=["post"]) def api_box(): data = request.json height = data.get("height") width = data.get("width") # ensure height width provided valid height width: return jsonify({"error": "height width required"}), 400 try: height = float(height) width = float(width) except valueerror: return jsonify({"error": "invalid height width values"}), 400 box_maker = boxmaker(height, width) dimensions, log_messages = box_maker.calculate_parts() # insert database (optional, based requirements) # get_db() db: # db.execute( # "insert generations (height, width, depth, panels) values (?, ?, ?, ?)", # (height, width, none, json.dumps(dimensions)), # ) # db.commit() return jsonify({"dimensions": dimensions, "log_messages": log_messages}) @app.route("/api/case", methods=["post"]) def api_case(): data = request.json height = data.get("height") width = data.get("width") desired_depth = data.get("desired_depth") # validating input data all([height, width, desired_depth]): return jsonify({"error": "height, width, depth required"}), 400 try: height = int(height) width = int(width) desired_depth = int(desired_depth) except valueerror: return jsonify({"error": "invalid height, width, depth values"}), 400 rectangle_maker = rectanglemaker(height, width, desired_depth) ( dimensions_sets, log_messages, stock_material_plot, ) = rectangle_maker.calculate_parts() dimensions_sets: return ( jsonify( { "error": "not enough suitable dimension sets could generated", "log_messages": log_messages, } ), 400, ) # insert database (optional, based requirements) get_db() db: dimensions dimensions_sets: db.execute( "insert generations (height, width, depth, panels) values (?, ?, ?, ?)", (height, width, desired_depth, json.dumps(dimensions)), ) db.commit() return jsonify({"dimensions_sets": dimensions_sets, "log_messages": log_messages}) @app.route("/api/generations", methods=["get"]) def api_generations(): get_db() db: cur = db.execute("select * generations") rows = cur.fetchall() generations = [dict(row) row rows] return jsonify(generations) @app.route("/api/download-svg/<int:generation_id>") def api_download_svg(generation_id): svg_string = generate_svg_string(generation_id) svg_string none: return jsonify({"error": "svg found"}), 404 # might want return url download svg data return jsonify({"svg": svg_string}) @app.route("/api/delete/<int:generation_id>", methods=["delete"]) def api_delete_generation(generation_id): get_db() db: db.execute("delete generations id = ?", (generation_id,)) db.commit() return jsonify({"message": "generation deleted"}) @app.route("/makerjs-display", methods=["get"]) def makerjs_display(): get_db() db: cur = db.execute("select * generations") generations = cur.fetchall() return render_template("makerjs_display.html", generations=generations) __name__ == "__main__": init_db() # ensure database initialized app.run(debug=true) # --- # filename: f:\code\genetic_box_advanced\static\css\bulma.min.css # --- /* bulma css code goes */ # --- # filename: f:\code\genetic_box_advanced\static\css\styles.css # --- :root { /* existing color scheme */ --black: #000500; --bistre: #362417; --cinereous: #92817a; --almond: #f1dabf; --dark-green: #01211c; --light-grey: #f5f5f5; /* light grey page background */ } /* setting light grey background whole page */ body { background-color: var(--light-grey); } /* card style */ .card { background: white; /* white background card */ border-radius: 8px; /* rounded corners card */ box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); /* simple shadow depth */ padding: 20px; /* spacing inside card */ margin-bottom: 20px; /* spacing cards */ width: 75%; } /* .card-custom{ width: 50%; } */ .hero { /* background-image: url("https://placehold.co/1080x1920"); */ background-position: center -25px; /* moves image 50 pixels center */ background-repeat: no-repeat; background-size: contain; background-attachment: fixed; min-height: 50vh; /* adjust height needed */ } /* style main content text moved hero */ .main-content { padding: 20px; /* add padding needed */ color: var(--cinereous); /* set text color */ } /* adjust button styles match :root colors */ .button { background-color: var(--bistre); /* using bistre :root */ color: var(--almond); /* using almond :root */ border: 2px solid var(--dark-green); /* border :root color */ padding: 10px 20px; /* padding button */ text-transform: uppercase; /* optional style */ font-weight: bold; /* optional style */ transition: background-color 0.3s; /* transition hover effect */ } .button:hover { background-color: var(--black); /* black color button hover :root */ color: var(--almond); /* ensure text color visible hover */ } .link-image { width: 150px; /* width image buttons */ height: 150px; /* height image buttons */ background-position: center; background-size: cover; display: inline-block; margin: 10px; border-radius: 5px; border: 3px solid var(--dark-green); /* dark green border */ } .box-link { background-image: url("https://placehold.co/150x150"); } .case-link { background-image: url("https://placehold.co/150x150"); } /* adjusting title color */ .title { color: var(--black); /* black color title */ } /* paragraph styling */ p { color: var(--cinereous); /* cinereous color paragraph */ } /* custom button styles */ .button { background-color: var(--bistre); /* bistre background */ color: var(--almond); /* almond text */ border: none; } .button:hover { background-color: var(--black); /* darken button hover */ } ul { list-style: outside disc; /* add bullet points back */ padding-left: 1em; /* adds space left list */ } /* add styles.css */ .button-custom { background-color: var(--bistre); /* using bistre :root */ color: var(--almond); /* using almond :root */ border: 2px solid var(--dark-green); /* border :root color */ /* add styles like padding, text-transform needed */ } .button-custom:hover { background-color: var(--black); /* black color button hover :root */ color: var(--almond); /* ensure text color visible hover */ } /* add styles.css */ .padding-below { padding-bottom: 20px; /* whatever amount padding prefer */ } .divider-section { height: 3px; background-color: var(--cinereous); /* color prefer */ } # --- # filename: f:\code\genetic_box_advanced\static\js\main.js # --- // javascript code goes # --- # filename: f:\code\genetic_box_advanced\static\js\makerjs_script.js # --- // correct instantiation maker.js object var makerjs = require("makerjs"); var globalgenerations = []; // global variable store generations data function createtablewithdata(generations) { var table = '<section class="section">' + '<div class="container">' + '<h1 class="title">panel sets</h1>' + '<section class="divider-section"></section>' + '<table class="table is-striped is-fullwidth">' + "<thead>" + "<tr>" + "<th>id</th>" + "<th>height</th>" + "<th>width</th>" + "<th>depth</th>" + "<th>panel details</th>" + "<th>actions</th>" + "</tr>" + "</thead>" + "<tbody>"; generations.foreach(function (generation) { // parse panels json var panels = json.parse(generation.panels); table += "<tr>" + "<td>" + generation.id + "</td>" + "<td>" + generation.height + "</td>" + "<td>" + generation.width + "</td>" + "<td>" + generation.depth + "</td>" + "<td>" + '<div style="overflow-x: auto">' + '<table class="table is-bordered is-narrow">' + "<thead>" + "<tr>" + "<th>panel</th>" + "<th>dimensions</th>" + "</tr>" + "</thead>" + "<tbody>"; object.entries(panels).foreach(([panel, sizes]) => { table += "<tr>" + "<td>" + panel + "</td>" + "<td>" + sizes.height + "mm x " + sizes.width + "mm</td>" + "</tr>"; }); table += "</tbody></table></div></td><td>" + '<button class="button is-small is-info" onclick="plotgeneration(globalgenerations, ' + generation.id + ')">plot</button>' + "</td></tr>"; }); table += "</tbody></table></div></section>"; return table; } // function plot generation using maker.js function plotgeneration(generations, generationid) { //console.log("generation id:", generationid); // log generationid //console.log("generations:", generations); // log contents globalgenerations var generation = generations.find((g) => g.id === generationid); (!generation) { console.log("generation found"); return; } // parse panels json draw panel var panels = json.parse(generation.panels); object.entries(panels).foreach(([panel, sizes]) => { drawpanel(panel, sizes.height, sizes.width); }); } // function draw panel using maker.js function drawpanel(panelname, height, width) { // implementation panel drawing using maker.js goes console.log( "drawing " + panelname + " height: " + height + "mm width: " + width + "mm" ); // need implement actual drawing logic per requirements } // implementing populategenerations function fetch data flask backend function populategenerations() { fetch("/api/generations") // replace correct api endpoint different .then((response) => response.json()) .then((generations) => { globalgenerations = generations; var tablehtml = createtablewithdata(generations); document.getelementbyid("generations-list").innerhtml = tablehtml; }) .catch((error) => console.error("error fetching generation data:", error)); } function runmakerjsexample() { var square = new makerjs.models.square(100); var svg = makerjs.exporter.tosvg(square); document.getelementbyid("makerjs-example-output").innerhtml = svg; } window.onload = function () { runmakerjsexample(); populategenerations(); }; # --- # filename: f:\code\genetic_box_advanced\static\js\modified_makerjs_script.js # --- // correct instantiation maker.js object var makerjs = require("makerjs"); function createtablewithdata(generations) { var table = '<section class="section">' + '<div class="container">' + '<h1 class="title">panel sets</h1>' + '<section class="divider-section"></section>' + '<table class="table is-striped is-fullwidth">' + "<thead>" + "<tr>" + "<th>id</th>" + "<th>height</th>" + "<th>width</th>" + "<th>depth</th>" + "<th>panel details</th>" + "<th>actions</th>" + "</tr>" + "</thead>" + "<tbody>"; generations.foreach(function (generation) { // parse panels json var panels = json.parse(generation.panels); table += "<tr>" + "<td>" + generation.id + "</td>" + "<td>" + generation.height + "</td>" + "<td>" + generation.width + "</td>" + "<td>" + generation.depth + "</td>" + "<td>" + '<div style="overflow-x: auto">' + '<table class="table is-bordered is-narrow">' + "<thead>" + "<tr>" + "<th>panel</th>" + "<th>dimensions</th>" + "</tr>" + "</thead>" + "<tbody>"; object.entries(panels).foreach(([panel, sizes]) => { table += "<tr>" + "<td>" + panel + "</td>" + "<td>" + sizes.height + "mm x " + sizes.width + "mm</td>" + "</tr>"; }); table += "</tbody></table></div></td><td>" + '<button class="button is-small is-info" onclick="plotgeneration(generations, ' + generation.id + ')">plot</button>' + "</td></tr>"; }); table += "</tbody></table></div></section>"; return table; } // function plot generation using maker.js function plotgeneration(generations, generationid) { // find generation data var generation = generations.find((g) => g.id === generationid); (!generation) { console.log("generation found"); return; } // parse panels json draw panel var panels = json.parse(generation.panels); object.entries(panels).foreach(([panel, sizes]) => { drawpanel(panel, sizes.height, sizes.width); }); } // function draw panel using maker.js function drawpanel(panelname, height, width) { // implementation panel drawing using maker.js goes console.log( "drawing " + panelname + " height: " + height + "mm width: " + width + "mm" ); // need implement actual drawing logic per requirements } // implementing populategenerations function fetch data flask backend function populategenerations() { fetch("/api/generations") // replace correct api endpoint different .then((response) => response.json()) .then((generations) => { var tablehtml = createtablewithdata(generations); document.getelementbyid("generations-list").innerhtml = tablehtml; }) .catch((error) => console.error("error fetching generation data:", error)); } function runmakerjsexample() { var square = new makerjs.models.square(100); var svg = makerjs.exporter.tosvg(square); document.getelementbyid("makerjs-example-output").innerhtml = svg; } window.onload = function () { runmakerjsexample(); populategenerations(); }; # --- # filename: f:\code\genetic_box_advanced\static\js\modified_makerjs_script_global.js # --- var globalgenerations = []; // global variable store generations data // correct instantiation maker.js object var makerjs = require("makerjs"); function createtablewithdata(generations) { var table = '<section class="section">' + '<div class="container">' + '<h1 class="title">panel sets</h1>' + '<section class="divider-section"></section>' + '<table class="table is-striped is-fullwidth">' + "<thead>" + "<tr>" + "<th>id</th>" + "<th>height</th>" + "<th>width</th>" + "<th>depth</th>" + "<th>panel details</th>" + "<th>actions</th>" + "</tr>" + "</thead>" + "<tbody>"; generations.foreach(function (generation) { // parse panels json var panels = json.parse(generation.panels); table += "<tr>" + "<td>" + generation.id + "</td>" + "<td>" + generation.height + "</td>" + "<td>" + generation.width + "</td>" + "<td>" + generation.depth + "</td>" + "<td>" + '<div style="overflow-x: auto">' + '<table class="table is-bordered is-narrow">' + "<thead>" + "<tr>" + "<th>panel</th>" + "<th>dimensions</th>" + "</tr>" + "</thead>" + "<tbody>"; object.entries(panels).foreach(([panel, sizes]) => { table += "<tr>" + "<td>" + panel + "</td>" + "<td>" + sizes.height + "mm x " + sizes.width + "mm</td>" + "</tr>"; }); table += "</tbody></table></div></td><td>" + '<button class="button is-small is-info" onclick="plotgeneration(generations, ' + generation.id + ')">plot</button>' + "</td></tr>"; }); table += "</tbody></table></div></section>"; return table; } // function plot generation using maker.js function plotgeneration(generationid) { // find generation data var generation = globalgenerations.find((g) => g.id === generationid); (!generation) { console.log("generation found"); return; } // parse panels json draw panel var panels = json.parse(generation.panels); object.entries(panels).foreach(([panel, sizes]) => { drawpanel(panel, sizes.height, sizes.width); }); } // function draw panel using maker.js function drawpanel(panelname, height, width) { // implementation panel drawing using maker.js goes console.log( "drawing " + panelname + " height: " + height + "mm width: " + width + "mm" ); // need implement actual drawing logic per requirements } // implementing populategenerations function fetch data flask backend function populategenerations() { fetch("/api/generations") // replace correct api endpoint different .then((response) => response.json()) .then((generations) => { globalgenerations = generations; var tablehtml = createtablewithdata(generations); document.getelementbyid("generations-list").innerhtml = tablehtml; }) .catch((error) => console.error("error fetching generation data:", error)); } function runmakerjsexample() { var square = new makerjs.models.square(100); var svg = makerjs.exporter.tosvg(square); document.getelementbyid("makerjs-example-output").innerhtml = svg; } window.onload = function () { runmakerjsexample(); populategenerations(); }; # --- # filename: f:\code\genetic_box_advanced\templates\box.html # --- <!doctype html> <html> <head> <!-- existing bulma css --> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css" /> <!-- link external css file --> <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" /> <!-- existing javascript file --> <script src="{{ url_for('static', filename='js/main.js') }}"></script> </head> <body> <section class="section"> <div class="container"> <h1 class="title">box maker</h1> <section class="divider-section"></section> <form method="post"> <div class="field"> <label class="label">height</label> <div class="control"> <input class="input" type="number" name="height" required /> </div> </div> <div class="field"> <label class="label">width</label> <div class="control"> <input class="input" type="number" name="width" required /> </div> </div> <div class="field"> <div class="control"> <button class="button buttom-custom">calculate</button> </div> </div> </form> <!-- ... (same table logs layout) ... --> {% dimensions %} <table style="padding-top: 20px" class="table"> <thead> <tr> <th>part</th> <th>dimension</th> </tr> </thead> <tbody> {% part, (height, width) dimensions.items() %} <tr> <td>{{ part }}</td> <td>{{ height }}mm x {{ width }}mm</td> </tr> {% endfor %} </tbody> </table> {% endif %} <section class="divider-section"></section> {% log_messages %} <div> <h2>logs</h2> <ul> {% log log_messages %} <li>{{ log }}</li> {% endfor %} </ul> </div> {% endif %} <!--end--> </div> </section> </body> </html> # --- # filename: f:\code\genetic_box_advanced\templates\case.html # --- <!doctype html> <html> <head> <!-- existing bulma css --> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css" /> <!-- link external css file --> <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" /> <!-- existing javascript file --> <script src="{{ url_for('static', filename='js/main.js') }}"></script> </head> <body> <section class="section"> <div class="container"> <h1 class="title">case maker</h1> <section class="divider-section"></section> <form method="post"> <div class="field"> <label class="label">height</label> <div class="control"> <input class="input" type="number" name="height" required /> </div> </div> <div class="field"> <label class="label">width</label> <div class="control"> <input class="input" type="number" name="width" required /> </div> </div> <div class="field"> <label class="label">desired depth</label> <div class="control"> <input class="input" type="number" name="desired_depth" required /> </div> </div> <div class="field"> <div class="control"> <button class="button button-custom">calculate</button> </div> </div> </form> <!-- ... (same table logs layout) ... --> <!-- display error message matches found --> {% error %} <div class="notification is-danger"> <button class="delete"></button> {{ error }} </div> {% endif %} {% dimensions_sets %} {% dimensions dimensions_sets %} <table style="padding-top: 20px" class="table"> <thead> <tr> <th>part</th> <th>dimension</th> </tr> </thead> <tbody> {% part, size dimensions.items() %} <tr> <td>{{ part }}</td> <td>{{ size['height'] }}mm x {{ size['width'] }}mm</td> </tr> {% endfor %} </tbody> </table> {% endfor %} {% endif %} <br /> <a href="/generations" class="button button-custom">manage</a> <section class="divider-section"></section> {% log_messages %} <div> <h2>logs</h2> <ul> {% log log_messages %} <li>{{ log }}</li> {% endfor %} </ul> </div> {% endif %} <!--end--> </div> </section> </body> </html> # --- # filename: f:\code\genetic_box_advanced\templates\error.html # --- <!-- plot.html --> <!doctype html> <html lang="en"> <head> <!-- existing bulma css --> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css" /> <!-- link external css file --> <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" /> <!-- existing javascript file --> <script src="{{ url_for('static', filename='js/main.js') }}"></script> </head> <body> <section class="section"> <div class="container"> <h1 class="title">error</h1> <section class="divider-section"></section> {% error %} <div class="notification is-danger"> <button class="delete"></button> {{ error }} </div> {% endif %} </div> </section> </body> </html> # --- # filename: f:\code\genetic_box_advanced\templates\generations.html # --- <!doctype html> <html> <head> <!-- ... head elements ... --> <!-- existing bulma css --> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css" /> <!-- link external css file --> <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" /> <!-- existing javascript file --> <script src="{{ url_for('static', filename='js/main.js') }}"></script> <script> function deletegeneration(id) { (confirm("are sure want delete generation?")) { fetch("/delete/" + id, { method: "post" }) .then((response) => { (response.ok) { window.location.reload(); } else { alert("error: could delete generation."); } }) .catch((error) => { console.error("error:", error); alert("an error occurred. please try again."); }); } } function plotgeneration(id) { fetch("/plot/" + id) .then((response) => response.text()) .then((plothtml) => { // create new window html element display plot var plotwindow = window.open( "", "plotwindow", "width=800,height=600" ); plotwindow.document.write(plothtml); plotwindow.document.close(); // close document stream }) .catch((error) => { console.error("error:", error); alert("an error occurred plotting. please try again."); }); } </script> </head> <body> <section class="section"> <div class="container"> <h1 class="title">panel sets</h1> <section class="divider-section"></section> <!-- ... body elements ... --> <table class="table is-striped is-fullwidth"> <thead> <tr> <th>id</th> <th>height</th> <th>width</th> <th>depth</th> <th>panel details</th> <th>actions</th> </tr> </thead> <tbody> {% generation generation_items %} <tr> <td>{{ generation['id'] }}</td> <td>{{ generation['height'] }}</td> <td>{{ generation['width'] }}</td> <td>{{ generation['depth'] }}</td> <td> <div style="overflow-x: auto"> <table class="table is-bordered is-narrow"> <thead> <tr> <th>panel</th> <th>dimensions</th> </tr> </thead> <tbody> {% panel, sizes generation['panels'].items() %} <tr> <td>{{ panel }}</td> <td> {{ sizes['height'] }}mm x {{ sizes['width'] }}mm </td> </tr> {% endfor %} </tbody> </table> </div> </td> <td> <button class="button is-small is-info" onclick="plotgeneration({{ generation['id'] }})" > plot </button> <a href="{{ url_for('download_svg', generation_id=generation['id']) }}" class="button is-small is-primary" > download svg </a> <a href="/makerjs-display" class="button is-small is-link"> cad </a> <button class="button is-small is-danger" onclick="deletegeneration({{ generation['id'] }})" > delete </button> </td> </tr> {% endfor %} </tbody> </table> </div> </section> </body> </html> # --- # filename: f:\code\genetic_box_advanced\templates\index.html # --- <!doctype html> <html> <head> <!-- existing bulma css --> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css" /> <!-- link external css file --> <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}" /> <!-- existing javascript file --> <script src="{{ url_for('static', filename='js/main.js') }}"></script> </head> <body> <!-- hero section image --> <div class="container is-0-fullhd"> <section class="hero is-large" style=" background-image: url('/static/images/logo_banner-gigapixel-art-height-780px.png'); " > <!-- text container, background image --> </section> <!-- main content section move text --> <section class="section"> <div class="container"> <!-- text hero --> <h1 class="title">welcome genetic woodworker</h1> <p style="font-size: 16px; font-weight: bold" class="padding-below"> genetic woodworker, blend artistry woodworking precision advanced algorithms transform approach projects. innovative app designed woodworkers aspire make every piece stock material, ensuring minimal waste optimal functionality. </p> <section class="divider-section"></section> <div style="padding-top: 20px" class="columns"> <!-- box maker card --> <div class="column is-offset-1"> <div class="card"> <div class="card-image"> <figure class="image is-256x256"> <img src="/static/images/box_maker.png" alt="box maker image" /> </figure> </div> <div class="card-content"> <div class="media"> <div class="media-content"> <p class="title is-4">box maker</p> </div> </div> <div class="content"> <p> input stock material dimensions box maker generate largest possible box design, ensuring use material efficiently. </p> <br /> <a href="/box" class="button button-custom">make</a> </div> </div> </div> </div> <!-- case maker card --> <div class="column is-offset-1"> <div class="card"> <div class="card-image"> <figure class="image is-256x256"> <img src="/static/images/case_maker.png" alt="case maker image" /> </figure> </div> <div class="card-content"> <div class="media"> <div class="media-content"> <p class="title is-4">case maker</p> </div> </div> <div class="content"> <p> case maker adheres critical dimensions generate customized case, optimizing stock material precision. </p> <br /> <a href="/case" class="button button-custom">make</a> </div> </div> </div> </div> </div> </div> <section class="divider-section"></section> </section> <section class="section"> <div class="container"> <h2 class="title">coming soon!</h2> <section class="divider-section"></section> <ul> <li>visualization generated box case 2d 3d</li> <li>downloadable plans</li> <li>top 10 genetic dimensions user choose from</li> </ul> </div> </section> </div> </body> </html> # --- # filename: f:\code\genetic_box_advanced\templates\makerjs_display.html # --- <!doctype html> <html lang="en"> <head> <meta charset="utf-8" /> <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <title>maker.js display</title> <!-- maker.js dependencies --> <script src="https://cdn.jsdelivr.net/npm/makerjs@0/target/js/browser.maker.js"></script> <script src="https://cdn.jsdelivr.net/npm/bezier-js@2/bezier.js"></script> <script src="https://cdn.jsdelivr.net/npm/opentype.js@0/dist/opentype.js"></script> <script src="./../static/js/makerjs_script.js"></script> <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css"> </head> <body> <h1>maker.js display</h1> <!-- section display generations database --> <div id="generations-list"> <h2>generations</h2> <div id="generations-list"></div> </div> <!-- section maker.js specific functionality --> <div id="makerjs-container"> <h2>maker.js area</h2> <div id="makerjs-example"> <h3>maker.js example</h3> <div id="makerjs-example-output"></div> </div> </div> </body> </html> # --- # filename: f:\code\genetic_box_advanced\templates\makerjs_display_old.html # --- <!doctype html> <html lang="en"> <head> <meta charset="utf-8" /> <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <title>maker.js display</title> <!-- maker.js dependencies --> <script src="https://cdn.jsdelivr.net/npm/makerjs@0/target/js/browser.maker.js"></script> <script src="https://cdn.jsdelivr.net/npm/bezier-js@2/bezier.js"></script> <script src="https://cdn.jsdelivr.net/npm/opentype.js@0/dist/opentype.js"></script> <script src="./../static/js/makerjs_script.js"></script> </head> <body> <h1>maker.js display</h1> <!-- section display generations database --> <div id="generations-list"> <h2>generations</h2> <div id="generations-list"></div> </div> <!-- section maker.js specific functionality --> <div id="makerjs-container"> <h2>maker.js area</h2> <div id="makerjs-example"> <h3>maker.js example</h3> <div id="makerjs-example-output"></div> </div> </div> </body> </html> # --- # filename: f:\code\genetic_box_advanced\templates\svg_display.html # --- <!doctype html> <html lang="en"> <head> <meta charset="utf-8" /> <meta http-equiv="x-ua-compatible" content="ie=edge" /> <meta name="viewport" content="width=device-width, initial-scale=1.0" /> <title>svg display</title> <style> body { margin: 0; padding: 0; display: flex; justify-content: center; align-items: center; height: 100vh; background-color: #f7f7f7; } svg { max-width: 100%; max-height: 100vh; border: 1px solid #ccc; box-shadow: 0 0 8px rgba(0, 0, 0, 0.1); } </style> </head> <body> <!-- svg content injected --> {{ svg_content | safe }} </body> </html>
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/_uncompressed_output.txt
+# ---
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\app.py
+# ---
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    Response,
+    make_response,
+    jsonify,
+)
+from markupsafe import escape
+from box import BoxMaker
+from rectangle import RectangleMaker
+import sqlite3
+import logging
+import svgwrite
+import os
+import json
+import click
+from flask.cli import with_appcontext
+
+# Setup logging
+logging.basicConfig(level=logging.ERROR, format="%(asctime)s-%(levelname)s-%(message)s")
+
+app = Flask(__name__)
+
+DATABASE = "generations.db"
+
+
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    with app.app_context():
+        db = get_db()
+        with app.open_resource("schema.sql", mode="r") as f:
+            db.cursor().executescript(f.read())
+        db.commit()
+
+
+def generate_svg_string(generation_id):
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations WHERE id = ?", (generation_id,))
+        generation = cur.fetchone()
+        if generation is None:
+            return None
+
+        panels = json.loads(generation["panels"])
+        dwg = svgwrite.Drawing(size=("2000mm", "2000mm"))
+        x_offset = 0
+        gap = 10
+
+        for panel, sizes in panels.items():
+            dwg.add(
+                dwg.rect(
+                    insert=(x_offset, 0),
+                    size=(sizes["width"], sizes["height"]),
+                    stroke="black",
+                    fill="none",
+                )
+            )
+            x_offset += sizes["width"] + gap
+
+        return dwg.tostring()
+
+
+@app.cli.command("init-db")
+@with_appcontext
+def init_db_command():
+    """Clear the existing data and create new tables."""
+    init_db()
+    click.echo("Initialized the database.")
+
+
+@app.route("/", methods=["GET"])
+def home():
+    return render_template("index.html")
+
+
+@app.route("/box", methods=["GET", "POST"])
+def box():
+    if request.method == "POST":
+        height = request.form.get("height")
+        width = request.form.get("width")
+        box_maker = BoxMaker(height, width)
+        dimensions, log_messages = box_maker.calculate_parts()
+        with get_db() as db:
+            db.execute(
+                "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+                (height, width, None, json.dumps(dimensions)),
+            )
+            db.commit()
+        return render_template(
+            "box.html", dimensions=dimensions, log_messages=log_messages
+        )
+    return render_template("box.html")
+
+
+@app.route("/case", methods=["GET", "POST"])
+def case():
+    if request.method == "POST":
+        height = request.form.get("height")
+        width = request.form.get("width")
+        desired_depth = request.form.get("desired_depth")
+        # Ensure the height, width, and desired_depth are valid numbers
+        try:
+            height = int(height)
+            width = int(width)
+            desired_depth = int(desired_depth)
+        except ValueError:
+            return render_template(
+                "case.html",
+                error="Please enter valid numbers for height, width, and depth.",
+            )
+
+        rectangle_maker = RectangleMaker(height, width, desired_depth)
+        (
+            dimensions_sets,
+            log_messages,
+            stock_material_plot,
+        ) = rectangle_maker.calculate_parts()
+
+        if not dimensions_sets:
+            return render_template(
+                "case.html",
+                error="Not enough suitable dimension sets could be generated.",
+                log_messages=log_messages,
+            )
+
+        with get_db() as db:
+            for dimensions in dimensions_sets:
+                db.execute(
+                    "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+                    (height, width, desired_depth, json.dumps(dimensions)),
+                )
+            db.commit()
+
+        return render_template(
+            "case.html",
+            dimensions_sets=dimensions_sets,
+            log_messages=log_messages,
+            stock_material_plot=stock_material_plot,
+        )
+    return render_template("case.html")
+
+
+@app.route("/generations", methods=["GET"])
+def generations():
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations")
+        rows = cur.fetchall()
+        generation_items = []
+        for row in rows:
+            generation = dict(row)  # Convert the Row object to a dictionary
+            generation["panels"] = json.loads(
+                generation["panels"]
+            )  # Deserialize the 'panels' JSON string
+            generation_items.append(
+                generation
+            )  # Append the modified dictionary to the list
+
+    return render_template("generations.html", generation_items=generation_items)
+
+
+@app.route("/download-svg/<int:generation_id>")
+def download_svg(generation_id):
+    svg_string = generate_svg_string(generation_id)
+    if svg_string is None:
+        return "SVG not found", 404
+
+    response = make_response(svg_string)
+    response.headers["Content-Type"] = "image/svg+xml"
+    response.headers[
+        "Content-Disposition"
+    ] = f'attachment; filename="panel_design_{generation_id}.svg"'
+    return response
+
+
+@app.route("/plot/<int:generation_id>")
+def plot(generation_id):
+    svg_string = generate_svg_string(generation_id)
+    if svg_string is None:
+        return "Generation not found", 404
+    return render_template(
+        "svg_display.html", svg_content=svg_string, generation_id=generation_id
+    )
+
+
+@app.route("/delete/<int:generation_id>", methods=["POST"])
+def delete_generation(generation_id):
+    with get_db() as db:
+        db.execute("DELETE FROM generations WHERE id = ?", (generation_id,))
+        db.commit()
+    return redirect(url_for("generations"))
+
+
+#############################
+###
+### API
+###
+#############################
+
+
+@app.route("/api/box", methods=["POST"])
+def api_box():
+    data = request.json
+    height = data.get("height")
+    width = data.get("width")
+
+    # Ensure height and width are provided and valid
+    if not height or not width:
+        return jsonify({"error": "Height and width are required"}), 400
+
+    try:
+        height = float(height)
+        width = float(width)
+    except ValueError:
+        return jsonify({"error": "Invalid height or width values"}), 400
+
+    box_maker = BoxMaker(height, width)
+    dimensions, log_messages = box_maker.calculate_parts()
+
+    # Insert into database (optional, based on your requirements)
+    # with get_db() as db:
+    #     db.execute(
+    #         "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+    #         (height, width, None, json.dumps(dimensions)),
+    #     )
+    #     db.commit()
+
+    return jsonify({"dimensions": dimensions, "log_messages": log_messages})
+
+
+@app.route("/api/case", methods=["POST"])
+def api_case():
+    data = request.json
+    height = data.get("height")
+    width = data.get("width")
+    desired_depth = data.get("desired_depth")
+
+    # Validating the input data
+    if not all([height, width, desired_depth]):
+        return jsonify({"error": "Height, width, and depth are required"}), 400
+
+    try:
+        height = int(height)
+        width = int(width)
+        desired_depth = int(desired_depth)
+    except ValueError:
+        return jsonify({"error": "Invalid height, width, or depth values"}), 400
+
+    rectangle_maker = RectangleMaker(height, width, desired_depth)
+    (
+        dimensions_sets,
+        log_messages,
+        stock_material_plot,
+    ) = rectangle_maker.calculate_parts()
+
+    if not dimensions_sets:
+        return (
+            jsonify(
+                {
+                    "error": "Not enough suitable dimension sets could be generated",
+                    "log_messages": log_messages,
+                }
+            ),
+            400,
+        )
+
+    # Insert into database (optional, based on your requirements)
+    with get_db() as db:
+        for dimensions in dimensions_sets:
+            db.execute(
+                "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+                (height, width, desired_depth, json.dumps(dimensions)),
+            )
+        db.commit()
+
+    return jsonify({"dimensions_sets": dimensions_sets, "log_messages": log_messages})
+
+
+@app.route("/api/generations", methods=["GET"])
+def api_generations():
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations")
+        rows = cur.fetchall()
+        generations = [dict(row) for row in rows]
+    return jsonify(generations)
+
+
+@app.route("/api/download-svg/<int:generation_id>")
+def api_download_svg(generation_id):
+    svg_string = generate_svg_string(generation_id)
+    if svg_string is None:
+        return jsonify({"error": "SVG not found"}), 404
+    # You might want to return a URL to download or the SVG data itself
+    return jsonify({"svg": svg_string})
+
+
+@app.route("/api/delete/<int:generation_id>", methods=["DELETE"])
+def api_delete_generation(generation_id):
+    with get_db() as db:
+        db.execute("DELETE FROM generations WHERE id = ?", (generation_id,))
+        db.commit()
+    return jsonify({"message": "Generation deleted"})
+
+
+@app.route("/makerjs-display", methods=["GET"])
+def makerjs_display():
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations")
+        generations = cur.fetchall()
+    return render_template("makerjs_display.html", generations=generations)
+
+
+if __name__ == "__main__":
+    init_db()  # Ensure the database is initialized
+    app.run(debug=True)
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\append-file.py
+# ---
+
+import tkinter as tk
+from tkinter import filedialog
+import os
+
+# Configure logging
+import logging
+
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+
+# Function to strip white space from file content
+def strip_whitespace(content):
+    return "".join(content.split())
+
+
+# Function to process files and append content to the output file
+def process_files(file_paths):
+    try:
+        # Extract file names without extensions
+        file_names = [os.path.splitext(os.path.basename(f))[0] for f in file_paths]
+
+        # Create the output file name
+        output_file_name = "-".join(file_names) + ".txt"
+
+        # Open the output file in write mode
+        with open(output_file_name, "w") as output_file:
+            for file_path in file_paths:
+                logging.info(f"Processing {file_path}")
+                with open(file_path, "r") as file:
+                    output_file.write(
+                        os.path.basename(file_path) + "\n"
+                    )  # Write the file name
+                    file_content = file.read()
+                    output_file.write(
+                        strip_whitespace(file_content) + "\n"
+                    )  # Write the stripped content
+        logging.info(f"All files have been processed and saved to {output_file_name}")
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+
+
+def main():
+    # Set up the GUI for file selection
+    root = tk.Tk()
+    root.withdraw()  # We don't want a full GUI, so keep the root window from appearing
+    root.update()
+
+    # Show an "Open" dialog box and return the path to the selected file(s)
+    file_paths = filedialog.askopenfilenames(
+        filetypes=[("Text files", "*.txt;*.py;*.css;*.html;*.yaml")],
+        title="Choose files",
+    )
+
+    # Process the files if any were selected
+    if file_paths:
+        process_files(file_paths)
+    else:
+        logging.info("No files were selected.")
+
+    root.destroy()
+
+
+if __name__ == "__main__":
+    main()
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\box.py
+# ---
+
+# Importing required modules from DEAP and Python standard library
+from deap import base, creator, tools, algorithms
+from random import randint
+
+
+# Class definition for BoxMaker
+class BoxMaker:
+    # Initialization method for the class
+    def __init__(self, height, width):
+        self.height = int(height)  # Initialize the height of the material
+        self.width = int(width)  # Initialize the width of the material
+
+    # Method to calculate parts dimensions
+    def calculate_parts(self):
+        log_messages = []
+        # Create a new fitness class extending base.Fitness with maximization goal
+        creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+        # Create a new individual class extending list with the new fitness class
+        creator.create("Individual", list, fitness=creator.FitnessMax)
+
+        # Initialize toolbox
+        toolbox = base.Toolbox()
+        # Register attribute generator for integers within a given range
+        toolbox.register("attr_int", randint, 1, min(self.height, self.width) // 2)
+        # Register individual and population initializers to the toolbox
+        toolbox.register(
+            "individual", tools.initRepeat, creator.Individual, toolbox.attr_int, n=6
+        )
+        toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+        # Define evaluation function
+        def evalBox(individual):
+            total_area = 0
+            # Loop through pairs of height and width for each side
+            for h, w in zip(individual[::2], individual[1::2]):
+                total_area += h * w * 2  # Area for both panels of the same dimension
+            return (total_area,)
+
+        # Register evaluation, crossover, mutation and selection methods to the toolbox
+        toolbox.register("evaluate", evalBox)
+        toolbox.register("mate", tools.cxTwoPoint)
+        toolbox.register(
+            "mutate",
+            tools.mutUniformInt,
+            low=1,
+            up=min(self.height, self.width) // 2,
+            indpb=0.2,
+        )
+        toolbox.register("select", tools.selTournament, tournsize=3)
+
+        # Initialize population
+        population = toolbox.population(n=300)
+        # Execute the genetic algorithm
+        algorithms.eaSimple(
+            population, toolbox, cxpb=0.5, mutpb=0.2, ngen=40, verbose=False
+        )
+
+        # Select the best individual from the final population
+        best_ind = tools.selBest(population, 1)[0]
+        print(f"Best individual: {best_ind}")
+
+        # Map best individual's dimensions to corresponding box parts
+        dimensions = {
+            "Front Panel": (best_ind[0], best_ind[1]),
+            "Back Panel": (best_ind[0], best_ind[1]),
+            "Left Side Panel": (best_ind[2], best_ind[3]),
+            "Right Side Panel": (best_ind[2], best_ind[3]),
+            "Top Panel": (best_ind[4], best_ind[5]),
+            "Bottom Panel": (best_ind[4], best_ind[5]),
+        }
+
+        print(f"Dimensions of box parts: {dimensions}")
+
+        # Calculate and display summary statistics
+        # total_parts_area = sum([h * w for h, w in dimensions.values()])
+        # total_initial_area = self.height * self.width
+        # print(f"Total area of parts: {total_parts_area}")
+        # print(f"Total initial area: {total_initial_area}")
+        # print(f"Utilization: {total_parts_area / total_initial_area * 100:.2f}%")
+
+        # Adding log messages
+        log_messages.append(f"Best individual: {best_ind}")
+        log_messages.append(f"Dimensions of box parts: {dimensions}")
+
+        total_parts_area = sum([h * w for h, w in dimensions.values()])
+        total_initial_area = self.height * self.width
+
+        log_messages.append(f"Total area of parts: {total_parts_area}")
+        log_messages.append(f"Total initial area: {total_initial_area}")
+        log_messages.append(
+            f"Utilization: {total_parts_area / total_initial_area * 100:.2f}%"
+        )
+
+        return dimensions, log_messages
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\README.md
+# ---
+
+# Genetic Woodworker
+
+## What does it do?
+
+The Genetic Woodworker is an app that helps woodworkers use their material most wisely. It uses genetic algorithms to determine the best size and fit of parts within the stock material specified.
+
+### Features
+
+1. In box maker, the app will generate the biggest box that can be made with the stock material dimensions specified by the user
+2. In case maker, the app will adhere to any critical dimension specified by the user and generate the biggest case that can be made with the stock material dimensions as specified by the user.
+
+### Planned Features
+
+1. Visualization of the generated box or case in 2D and 3D
+2. Downloadable plans
+3. Top 10 genetic dimensions for user to choose from
+
+### Technology
+
+1. DEAP - Genetic Algorithm Library
+2. Bulma - CSS Library
+3. RectPack - Bin Packing Library
+4. Maker.js - CNC / Laser software
+5. Svgwrite - SVGwrite
+6. Flask - Web application backend
+
+### To Run
+
+1. `cd Genetic_Woodworker`
+2. `flask run`
+3. Go to localhost:5000
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\rectangle.py
+# ---
+
+import logging
+from deap import base, creator, tools, algorithms
+from random import randint
+from math import fabs
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
+)
+
+GOLDEN_RATIO = 1.618
+
+# Ensure the FitnessMax and Individual classes are created only once.
+if not hasattr(creator, "FitnessMax"):
+    creator.create("FitnessMax", base.Fitness, weights=(1.0,))
+if not hasattr(creator, "Individual"):
+    creator.create("Individual", list, fitness=creator.FitnessMax)
+
+
+class RectangleMaker:
+    def __init__(self, height, width, desired_depth):
+        self.height = int(height)
+        self.width = int(width)
+        self.desired_depth = int(desired_depth)
+        self.seen_dimensions = {}
+
+    def calculate_parts(self):
+        logging.info("Starting calculation of parts.")
+        log_messages = []  # Initialize log message list
+        selected_dimensions = []
+
+        toolbox = base.Toolbox()
+        toolbox.register("attr_height", randint, 1, self.height)
+        toolbox.register("attr_width", randint, 1, self.width)
+        toolbox.register(
+            "individual",
+            tools.initCycle,
+            creator.Individual,
+            (toolbox.attr_height, toolbox.attr_width),
+            n=1,
+        )
+        toolbox.register("population", tools.initRepeat, list, toolbox.individual)
+
+        # Define the stats variable before using it
+        stats = tools.Statistics(lambda ind: ind.fitness.values)
+        stats.register("min", min)
+        stats.register("max", max)
+
+        def evalRectangle(individual):
+            front_height, front_width = individual
+
+            # Check if the front/back panels fit within the stock material
+            if front_height > self.height or front_width > self.width:
+                return (0,)  # Invalid individual due to size constraints
+
+            # Check if the side panels fit within the stock material after accounting for the front/back panels
+            if 2 * self.desired_depth + front_height > self.height:
+                return (0,)  # Invalid, side panels don't fit in height
+
+            # Check if the top/bottom panels fit within the stock material after accounting for the front/back panels
+            if 2 * self.desired_depth + front_width > self.width:
+                return (0,)  # Invalid, top and bottom panels don't fit in width
+
+            # Calculate how close we are to the golden ratio
+            golden_diff = fabs((front_height / front_width) - GOLDEN_RATIO)
+
+            # Calculate areas for each set of pieces
+            side_area = 2 * (front_height * self.desired_depth)  # Two side panels
+            front_back_area = 2 * (front_height * front_width)   # Front and back panels
+            top_bottom_area = 2 * (front_width * self.desired_depth)  # Top and bottom panels
+            total_area = side_area + front_back_area + top_bottom_area
+            unused_area = (self.height * self.width) - total_area
+
+            # Introduce a penalty for dimensions that have been seen before
+            dimensions_tuple = (front_height, front_width)
+            penalty = self.seen_dimensions.get(dimensions_tuple, 0) * 100
+
+            # Adjust golden ratio penalty scaling
+            golden_ratio_penalty = golden_diff * 100  # Use a smaller scaling factor
+
+            # The fitness value is a combination of maximizing total area used and minimizing waste and penalties
+            fitness_value = total_area - golden_ratio_penalty - penalty - unused_area
+
+            logging.debug(f"Evaluating individual: {individual} with fitness: {fitness_value}, Unused Area: {unused_area}")
+
+            return (fitness_value,)
+
+        toolbox.register("evaluate", evalRectangle)
+        toolbox.register("mate", tools.cxTwoPoint)
+        toolbox.register("mutate", tools.mutUniformInt,
+                         low=1,
+                         up=min(self.height, self.width),  # Adjust mutation range
+                         indpb=0.2)
+        toolbox.register("select", tools.selBest)
+
+        mu = 300
+        lambda_ = 2 * mu
+        population = toolbox.population(n=mu)
+
+        halloffame = tools.HallOfFame(3)  # Keep the top 3 individuals
+
+        try:
+            # Correct the unpacking of returned values from the function
+            population, logbook = algorithms.eaMuPlusLambda(
+                population,
+                toolbox,
+                mu=mu,
+                lambda_=lambda_,
+                cxpb=0.5,
+                mutpb=0.5,
+                ngen=40,
+                stats=stats,
+                halloffame=halloffame,
+                verbose=False,
+            )
+            # log_messages.extend(logbook.stream) # Uncomment and modify if logbook entries are needed
+        except Exception as e:
+            logging.error(
+                f"An error occurred during the genetic algorithm execution: {e}"
+            )
+            return None, []
+
+        # Replace the selection of the top individuals with selection from the hall of fame
+        top_individuals = halloffame.items
+
+        for ind in top_individuals:
+            log_messages.append(f"Individual: {ind}, Fitness: {ind.fitness.values[0]}")
+            if ind.fitness.values[0] > 0:
+                dimensions_dict = {
+                    "Front Panel": {"height": ind[0], "width": ind[1]},
+                    "Back Panel": {"height": ind[0], "width": ind[1]},
+                    "Left Side Panel": {"height": ind[0], "width": self.desired_depth},
+                    "Right Side Panel": {"height": ind[0], "width": self.desired_depth},
+                    "Top Panel": {"height": ind[1], "width": self.desired_depth},
+                    "Bottom Panel": {"height": ind[1], "width": self.desired_depth},
+                }
+                if dimensions_dict not in selected_dimensions:
+                    selected_dimensions.append(dimensions_dict)
+                    log_messages.append(f"Unique Dimensions: {dimensions_dict}")
+                    # Apply a decay to the penalty for seen dimensions
+                    self.seen_dimensions[(ind[0], ind[1])] = (
+                        self.seen_dimensions.get((ind[0], ind[1]), 0) - 1
+                    )
+
+        if not selected_dimensions:
+            logging.warning("No suitable unique individuals generated.")
+            return None, []
+
+        logging.info("Calculation completed successfully.")
+        stock_material_plot = {"height": self.height, "width": self.width}
+        return selected_dimensions, log_messages, stock_material_plot
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\requirements.txt
+# ---
+
+Flask
+deap
+rectpack
+plotly
+svgwrite
+markupsafe
+click
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\schema.sql
+# ---
+
+DROP TABLE IF EXISTS generations;
+CREATE TABLE generations (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    height TEXT NOT NULL,
+    width TEXT NOT NULL,
+    depth TEXT,
+    panels TEXT NOT NULL
+);
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\_uncompressed_output.txt
+# ---
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\app.py
+# ---
+
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    Response,
+    make_response,
+    jsonify,
+)
+from markupsafe import escape
+from box import BoxMaker
+from rectangle import RectangleMaker
+import sqlite3
+import logging
+import svgwrite
+import os
+import json
+import click
+from flask.cli import with_appcontext
+
+# Setup logging
+logging.basicConfig(level=logging.ERROR, format="%(asctime)s-%(levelname)s-%(message)s")
+
+app = Flask(__name__)
+
+DATABASE = "generations.db"
+
+
+def get_db():
+    conn = sqlite3.connect(DATABASE)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_db():
+    with app.app_context():
+        db = get_db()
+        with app.open_resource("schema.sql", mode="r") as f:
+            db.cursor().executescript(f.read())
+        db.commit()
+
+
+def generate_svg_string(generation_id):
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations WHERE id = ?", (generation_id,))
+        generation = cur.fetchone()
+        if generation is None:
+            return None
+
+        panels = json.loads(generation["panels"])
+        dwg = svgwrite.Drawing(size=("2000mm", "2000mm"))
+        x_offset = 0
+        gap = 10
+
+        for panel, sizes in panels.items():
+            dwg.add(
+                dwg.rect(
+                    insert=(x_offset, 0),
+                    size=(sizes["width"], sizes["height"]),
+                    stroke="black",
+                    fill="none",
+                )
+            )
+            x_offset += sizes["width"] + gap
+
+        return dwg.tostring()
+
+
+@app.cli.command("init-db")
+@with_appcontext
+def init_db_command():
+    """Clear the existing data and create new tables."""
+    init_db()
+    click.echo("Initialized the database.")
+
+
+@app.route("/", methods=["GET"])
+def home():
+    return render_template("index.html")
+
+
+@app.route("/box", methods=["GET", "POST"])
+def box():
+    if request.method == "POST":
+        height = request.form.get("height")
+        width = request.form.get("width")
+        box_maker = BoxMaker(height, width)
+        dimensions, log_messages = box_maker.calculate_parts()
+        with get_db() as db:
+            db.execute(
+                "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+                (height, width, None, json.dumps(dimensions)),
+            )
+            db.commit()
+        return render_template(
+            "box.html", dimensions=dimensions, log_messages=log_messages
+        )
+    return render_template("box.html")
+
+
+@app.route("/case", methods=["GET", "POST"])
+def case():
+    if request.method == "POST":
+        height = request.form.get("height")
+        width = request.form.get("width")
+        desired_depth = request.form.get("desired_depth")
+        # Ensure the height, width, and desired_depth are valid numbers
+        try:
+            height = int(height)
+            width = int(width)
+            desired_depth = int(desired_depth)
+        except ValueError:
+            return render_template(
+                "case.html",
+                error="Please enter valid numbers for height, width, and depth.",
+            )
+
+        rectangle_maker = RectangleMaker(height, width, desired_depth)
+        (
+            dimensions_sets,
+            log_messages,
+            stock_material_plot,
+        ) = rectangle_maker.calculate_parts()
+
+        if not dimensions_sets:
+            return render_template(
+                "case.html",
+                error="Not enough suitable dimension sets could be generated.",
+                log_messages=log_messages,
+            )
+
+        with get_db() as db:
+            for dimensions in dimensions_sets:
+                db.execute(
+                    "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+                    (height, width, desired_depth, json.dumps(dimensions)),
+                )
+            db.commit()
+
+        return render_template(
+            "case.html",
+            dimensions_sets=dimensions_sets,
+            log_messages=log_messages,
+            stock_material_plot=stock_material_plot,
+        )
+    return render_template("case.html")
+
+
+@app.route("/generations", methods=["GET"])
+def generations():
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations")
+        rows = cur.fetchall()
+        generation_items = []
+        for row in rows:
+            generation = dict(row)  # Convert the Row object to a dictionary
+            generation["panels"] = json.loads(
+                generation["panels"]
+            )  # Deserialize the 'panels' JSON string
+            generation_items.append(
+                generation
+            )  # Append the modified dictionary to the list
+
+    return render_template("generations.html", generation_items=generation_items)
+
+
+@app.route("/download-svg/<int:generation_id>")
+def download_svg(generation_id):
+    svg_string = generate_svg_string(generation_id)
+    if svg_string is None:
+        return "SVG not found", 404
+
+    response = make_response(svg_string)
+    response.headers["Content-Type"] = "image/svg+xml"
+    response.headers[
+        "Content-Disposition"
+    ] = f'attachment; filename="panel_design_{generation_id}.svg"'
+    return response
+
+
+@app.route("/plot/<int:generation_id>")
+def plot(generation_id):
+    svg_string = generate_svg_string(generation_id)
+    if svg_string is None:
+        return "Generation not found", 404
+    return render_template(
+        "svg_display.html", svg_content=svg_string, generation_id=generation_id
+    )
+
+
+@app.route("/delete/<int:generation_id>", methods=["POST"])
+def delete_generation(generation_id):
+    with get_db() as db:
+        db.execute("DELETE FROM generations WHERE id = ?", (generation_id,))
+        db.commit()
+    return redirect(url_for("generations"))
+
+
+#############################
+###
+### API
+###
+#############################
+
+
+@app.route("/api/box", methods=["POST"])
+def api_box():
+    data = request.json
+    height = data.get("height")
+    width = data.get("width")
+
+    # Ensure height and width are provided and valid
+    if not height or not width:
+        return jsonify({"error": "Height and width are required"}), 400
+
+    try:
+        height = float(height)
+        width = float(width)
+    except ValueError:
+        return jsonify({"error": "Invalid height or width values"}), 400
+
+    box_maker = BoxMaker(height, width)
+    dimensions, log_messages = box_maker.calculate_parts()
+
+    # Insert into database (optional, based on your requirements)
+    # with get_db() as db:
+    #     db.execute(
+    #         "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+    #         (height, width, None, json.dumps(dimensions)),
+    #     )
+    #     db.commit()
+
+    return jsonify({"dimensions": dimensions, "log_messages": log_messages})
+
+
+@app.route("/api/case", methods=["POST"])
+def api_case():
+    data = request.json
+    height = data.get("height")
+    width = data.get("width")
+    desired_depth = data.get("desired_depth")
+
+    # Validating the input data
+    if not all([height, width, desired_depth]):
+        return jsonify({"error": "Height, width, and depth are required"}), 400
+
+    try:
+        height = int(height)
+        width = int(width)
+        desired_depth = int(desired_depth)
+    except ValueError:
+        return jsonify({"error": "Invalid height, width, or depth values"}), 400
+
+    rectangle_maker = RectangleMaker(height, width, desired_depth)
+    (
+        dimensions_sets,
+        log_messages,
+        stock_material_plot,
+    ) = rectangle_maker.calculate_parts()
+
+    if not dimensions_sets:
+        return (
+            jsonify(
+                {
+                    "error": "Not enough suitable dimension sets could be generated",
+                    "log_messages": log_messages,
+                }
+            ),
+            400,
+        )
+
+    # Insert into database (optional, based on your requirements)
+    with get_db() as db:
+        for dimensions in dimensions_sets:
+            db.execute(
+                "INSERT INTO generations (height, width, depth, panels) VALUES (?, ?, ?, ?)",
+                (height, width, desired_depth, json.dumps(dimensions)),
+            )
+        db.commit()
+
+    return jsonify({"dimensions_sets": dimensions_sets, "log_messages": log_messages})
+
+
+@app.route("/api/generations", methods=["GET"])
+def api_generations():
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations")
+        rows = cur.fetchall()
+        generations = [dict(row) for row in rows]
+    return jsonify(generations)
+
+
+@app.route("/api/download-svg/<int:generation_id>")
+def api_download_svg(generation_id):
+    svg_string = generate_svg_string(generation_id)
+    if svg_string is None:
+        return jsonify({"error": "SVG not found"}), 404
+    # You might want to return a URL to download or the SVG data itself
+    return jsonify({"svg": svg_string})
+
+
+@app.route("/api/delete/<int:generation_id>", methods=["DELETE"])
+def api_delete_generation(generation_id):
+    with get_db() as db:
+        db.execute("DELETE FROM generations WHERE id = ?", (generation_id,))
+        db.commit()
+    return jsonify({"message": "Generation deleted"})
+
+
+@app.route("/makerjs-display", methods=["GET"])
+def makerjs_display():
+    with get_db() as db:
+        cur = db.execute("SELECT * FROM generations")
+        generations = cur.fetchall()
+    return render_template("makerjs_display.html", generations=generations)
+
+
+if __name__ == "__main__":
+    init_db()  # Ensure the database is initialized
+    app.run(debug=True)
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\static\css\bulma.min.css
+# ---
+
+/* Bulma CSS code goes here */
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\static\css\styles.css
+# ---
+
+:root {
+  /* Existing color scheme */
+  --black: #000500;
+  --bistre: #362417;
+  --cinereous: #92817a;
+  --almond: #f1dabf;
+  --dark-green: #01211c;
+  --light-grey: #f5f5f5; /* Light grey for the page background */
+}
+
+/* Setting the light grey background for the whole page */
+body {
+  background-color: var(--light-grey);
+}
+
+/* Card style */
+.card {
+  background: white; /* White background for the card */
+  border-radius: 8px; /* Rounded corners for the card */
+  box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); /* Simple shadow for depth */
+  padding: 20px; /* Spacing inside the card */
+  margin-bottom: 20px; /* Spacing between cards */
+  width: 75%;
+}
+
+/* .card-custom{
+  width: 50%;
+} */
+
+.hero {
+  /* background-image: url("https://placehold.co/1080x1920"); */
+  background-position: center -25px; /* Moves the image 50 pixels up from the center */
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-attachment: fixed;
+  min-height: 50vh; /* Adjust the height as needed */
+}
+
+/* Style for the main content text moved out of hero */
+.main-content {
+  padding: 20px; /* Add padding as needed */
+  color: var(--cinereous); /* Set text color */
+}
+
+
+/* Adjust button styles to match the :root colors */
+.button {
+  background-color: var(--bistre); /* Using bistre from :root */
+  color: var(--almond); /* Using almond from :root */
+  border: 2px solid var(--dark-green); /* Border from :root color */
+  padding: 10px 20px; /* Padding for button */
+  text-transform: uppercase; /* Optional style */
+  font-weight: bold; /* Optional style */
+  transition: background-color 0.3s; /* Transition for hover effect */
+}
+
+.button:hover {
+  background-color: var(--black); /* Black color for button hover from :root */
+  color: var(--almond); /* Ensure text color is visible on hover */
+}
+  .link-image {
+    width: 150px; /* Width of image buttons */
+    height: 150px; /* Height of image buttons */
+    background-position: center;
+    background-size: cover;
+    display: inline-block;
+    margin: 10px;
+    border-radius: 5px;
+    border: 3px solid var(--dark-green); /* Dark green border */
+  }
+  .box-link {
+    background-image: url("https://placehold.co/150x150");
+  }
+  .case-link {
+    background-image: url("https://placehold.co/150x150");
+  }
+  /* Adjusting the title color */
+  .title {
+    color: var(--black); /* Black color for title */
+  }
+  /* Paragraph styling */
+  p {
+    color: var(--cinereous); /* Cinereous color for paragraph */
+  }
+  /* Custom button styles */
+  .button {
+    background-color: var(--bistre); /* Bistre background */
+    color: var(--almond); /* Almond text */
+    border: none;
+  }
+  .button:hover {
+    background-color: var(--black); /* Darken button on hover */
+  }
+
+  ul {
+    list-style: outside disc; /* This will add the bullet points back */
+    padding-left: 1em; /* This adds some space to the left of the list */
+  }
+
+  /* Add this to your styles.css */
+.button-custom {
+  background-color: var(--bistre); /* Using bistre from :root */
+  color: var(--almond); /* Using almond from :root */
+  border: 2px solid var(--dark-green); /* Border from :root color */
+  /* Add other styles like padding, text-transform if needed */
+}
+
+.button-custom:hover {
+  background-color: var(--black); /* Black color for button hover from :root */
+  color: var(--almond); /* Ensure text color is visible on hover */
+}
+
+/* Add this to your styles.css */
+.padding-below {
+  padding-bottom: 20px; /* Or whatever amount of padding you prefer */
+}
+
+.divider-section {
+  height: 3px;
+  background-color: var(--cinereous); /* or any color you prefer */
+}
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\static\js\main.js
+# ---
+
+// JavaScript code goes here
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\static\js\makerjs_script.js
+# ---
+
+// Correct instantiation of Maker.js object
+var makerjs = require("makerjs");
+
+var globalGenerations = []; // Global variable to store generations data
+
+function createTableWithData(generations) {
+  var table =
+    '<section class="section">' +
+    '<div class="container">' +
+    '<h1 class="title">Panel Sets</h1>' +
+    '<section class="divider-section"></section>' +
+    '<table class="table is-striped is-fullwidth">' +
+    "<thead>" +
+    "<tr>" +
+    "<th>ID</th>" +
+    "<th>Height</th>" +
+    "<th>Width</th>" +
+    "<th>Depth</th>" +
+    "<th>Panel Details</th>" +
+    "<th>Actions</th>" +
+    "</tr>" +
+    "</thead>" +
+    "<tbody>";
+
+  generations.forEach(function (generation) {
+    // Parse panels JSON
+    var panels = JSON.parse(generation.panels);
+
+    table +=
+      "<tr>" +
+      "<td>" +
+      generation.id +
+      "</td>" +
+      "<td>" +
+      generation.height +
+      "</td>" +
+      "<td>" +
+      generation.width +
+      "</td>" +
+      "<td>" +
+      generation.depth +
+      "</td>" +
+      "<td>" +
+      '<div style="overflow-x: auto">' +
+      '<table class="table is-bordered is-narrow">' +
+      "<thead>" +
+      "<tr>" +
+      "<th>Panel</th>" +
+      "<th>Dimensions</th>" +
+      "</tr>" +
+      "</thead>" +
+      "<tbody>";
+
+    Object.entries(panels).forEach(([panel, sizes]) => {
+      table +=
+        "<tr>" +
+        "<td>" +
+        panel +
+        "</td>" +
+        "<td>" +
+        sizes.height +
+        "mm x " +
+        sizes.width +
+        "mm</td>" +
+        "</tr>";
+    });
+
+    table +=
+      "</tbody></table></div></td><td>" +
+      '<button class="button is-small is-info" onclick="plotGeneration(globalGenerations, ' +
+      generation.id +
+      ')">Plot</button>' +
+      "</td></tr>";
+  });
+
+  table += "</tbody></table></div></section>";
+  return table;
+}
+
+// Function to plot a generation using Maker.js
+function plotGeneration(generations, generationId) {
+  //console.log("Generation ID:", generationId); // Log the generationId
+  //console.log("Generations:", generations); // Log the contents of the globalGenerations
+
+  var generation = generations.find((g) => g.id === generationId);
+  if (!generation) {
+    console.log("Generation not found");
+    return;
+  }
+
+  // Parse panels JSON and draw each panel
+  var panels = JSON.parse(generation.panels);
+  Object.entries(panels).forEach(([panel, sizes]) => {
+    drawPanel(panel, sizes.height, sizes.width);
+  });
+}
+
+// Function to draw a panel using Maker.js
+function drawPanel(panelName, height, width) {
+  // Implementation of panel drawing using Maker.js goes here
+  console.log(
+    "Drawing " +
+      panelName +
+      " with height: " +
+      height +
+      "mm and width: " +
+      width +
+      "mm"
+  );
+  // You will need to implement the actual drawing logic as per your requirements
+}
+
+// Implementing the populateGenerations function to fetch data from the Flask backend
+function populateGenerations() {
+  fetch("/api/generations") // Replace with the correct API endpoint if different
+    .then((response) => response.json())
+    .then((generations) => {
+      globalGenerations = generations;
+      var tableHtml = createTableWithData(generations);
+      document.getElementById("generations-list").innerHTML = tableHtml;
+    })
+    .catch((error) => console.error("Error fetching generation data:", error));
+}
+
+function runMakerJsExample() {
+  var square = new makerjs.models.Square(100);
+  var svg = makerjs.exporter.toSVG(square);
+  document.getElementById("makerjs-example-output").innerHTML = svg;
+}
+
+window.onload = function () {
+  runMakerJsExample();
+  populateGenerations();
+};
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\static\js\modified_makerjs_script.js
+# ---
+
+
+// Correct instantiation of Maker.js object
+var makerjs = require("makerjs");
+
+function createTableWithData(generations) {
+  var table =
+    '<section class="section">' +
+    '<div class="container">' +
+    '<h1 class="title">Panel Sets</h1>' +
+    '<section class="divider-section"></section>' +
+    '<table class="table is-striped is-fullwidth">' +
+    "<thead>" +
+    "<tr>" +
+    "<th>ID</th>" +
+    "<th>Height</th>" +
+    "<th>Width</th>" +
+    "<th>Depth</th>" +
+    "<th>Panel Details</th>" +
+    "<th>Actions</th>" +
+    "</tr>" +
+    "</thead>" +
+    "<tbody>";
+
+  generations.forEach(function (generation) {
+    // Parse panels JSON
+    var panels = JSON.parse(generation.panels);
+
+    table +=
+      "<tr>" +
+      "<td>" +
+      generation.id +
+      "</td>" +
+      "<td>" +
+      generation.height +
+      "</td>" +
+      "<td>" +
+      generation.width +
+      "</td>" +
+      "<td>" +
+      generation.depth +
+      "</td>" +
+      "<td>" +
+      '<div style="overflow-x: auto">' +
+      '<table class="table is-bordered is-narrow">' +
+      "<thead>" +
+      "<tr>" +
+      "<th>Panel</th>" +
+      "<th>Dimensions</th>" +
+      "</tr>" +
+      "</thead>" +
+      "<tbody>";
+
+    Object.entries(panels).forEach(([panel, sizes]) => {
+      table +=
+        "<tr>" +
+        "<td>" +
+        panel +
+        "</td>" +
+        "<td>" +
+        sizes.height +
+        "mm x " +
+        sizes.width +
+        "mm</td>" +
+        "</tr>";
+    });
+
+    table +=
+      "</tbody></table></div></td><td>" +
+      '<button class="button is-small is-info" onclick="plotGeneration(generations, ' +
+      generation.id +
+      ')">Plot</button>' +
+      "</td></tr>";
+  });
+
+  table += "</tbody></table></div></section>";
+  return table;
+}
+
+// Function to plot a generation using Maker.js
+function plotGeneration(generations, generationId) {
+  // Find the generation data
+  var generation = generations.find((g) => g.id === generationId);
+  if (!generation) {
+    console.log("Generation not found");
+    return;
+  }
+
+  // Parse panels JSON and draw each panel
+  var panels = JSON.parse(generation.panels);
+  Object.entries(panels).forEach(([panel, sizes]) => {
+    drawPanel(panel, sizes.height, sizes.width);
+  });
+}
+
+// Function to draw a panel using Maker.js
+function drawPanel(panelName, height, width) {
+  // Implementation of panel drawing using Maker.js goes here
+  console.log(
+    "Drawing " +
+      panelName +
+      " with height: " +
+      height +
+      "mm and width: " +
+      width +
+      "mm"
+  );
+  // You will need to implement the actual drawing logic as per your requirements
+}
+
+// Implementing the populateGenerations function to fetch data from the Flask backend
+function populateGenerations() {
+  fetch("/api/generations") // Replace with the correct API endpoint if different
+    .then((response) => response.json())
+    .then((generations) => {
+      var tableHtml = createTableWithData(generations);
+      document.getElementById("generations-list").innerHTML = tableHtml;
+    })
+    .catch((error) => console.error("Error fetching generation data:", error));
+}
+
+function runMakerJsExample() {
+  var square = new makerjs.models.Square(100);
+  var svg = makerjs.exporter.toSVG(square);
+  document.getElementById("makerjs-example-output").innerHTML = svg;
+}
+
+window.onload = function () {
+  runMakerJsExample();
+  populateGenerations();
+};
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\static\js\modified_makerjs_script_global.js
+# ---
+
+
+var globalGenerations = []; // Global variable to store generations data
+
+
+// Correct instantiation of Maker.js object
+var makerjs = require("makerjs");
+
+function createTableWithData(generations) {
+  var table =
+    '<section class="section">' +
+    '<div class="container">' +
+    '<h1 class="title">Panel Sets</h1>' +
+    '<section class="divider-section"></section>' +
+    '<table class="table is-striped is-fullwidth">' +
+    "<thead>" +
+    "<tr>" +
+    "<th>ID</th>" +
+    "<th>Height</th>" +
+    "<th>Width</th>" +
+    "<th>Depth</th>" +
+    "<th>Panel Details</th>" +
+    "<th>Actions</th>" +
+    "</tr>" +
+    "</thead>" +
+    "<tbody>";
+
+  generations.forEach(function (generation) {
+    // Parse panels JSON
+    var panels = JSON.parse(generation.panels);
+
+    table +=
+      "<tr>" +
+      "<td>" +
+      generation.id +
+      "</td>" +
+      "<td>" +
+      generation.height +
+      "</td>" +
+      "<td>" +
+      generation.width +
+      "</td>" +
+      "<td>" +
+      generation.depth +
+      "</td>" +
+      "<td>" +
+      '<div style="overflow-x: auto">' +
+      '<table class="table is-bordered is-narrow">' +
+      "<thead>" +
+      "<tr>" +
+      "<th>Panel</th>" +
+      "<th>Dimensions</th>" +
+      "</tr>" +
+      "</thead>" +
+      "<tbody>";
+
+    Object.entries(panels).forEach(([panel, sizes]) => {
+      table +=
+        "<tr>" +
+        "<td>" +
+        panel +
+        "</td>" +
+        "<td>" +
+        sizes.height +
+        "mm x " +
+        sizes.width +
+        "mm</td>" +
+        "</tr>";
+    });
+
+    table +=
+      "</tbody></table></div></td><td>" +
+      '<button class="button is-small is-info" onclick="plotGeneration(generations, ' +
+      generation.id +
+      ')">Plot</button>' +
+      "</td></tr>";
+  });
+
+  table += "</tbody></table></div></section>";
+  return table;
+}
+
+// Function to plot a generation using Maker.js
+function plotGeneration(generationId) {
+  // Find the generation data
+  var generation = globalGenerations.find((g) => g.id === generationId);
+  if (!generation) {
+    console.log("Generation not found");
+    return;
+  }
+
+  // Parse panels JSON and draw each panel
+  var panels = JSON.parse(generation.panels);
+  Object.entries(panels).forEach(([panel, sizes]) => {
+    drawPanel(panel, sizes.height, sizes.width);
+  });
+}
+
+// Function to draw a panel using Maker.js
+function drawPanel(panelName, height, width) {
+  // Implementation of panel drawing using Maker.js goes here
+  console.log(
+    "Drawing " +
+      panelName +
+      " with height: " +
+      height +
+      "mm and width: " +
+      width +
+      "mm"
+  );
+  // You will need to implement the actual drawing logic as per your requirements
+}
+
+// Implementing the populateGenerations function to fetch data from the Flask backend
+function populateGenerations() {
+  fetch("/api/generations") // Replace with the correct API endpoint if different
+    .then((response) => response.json())
+    .then((generations) => {
+      globalGenerations = generations;
+    var tableHtml = createTableWithData(generations);
+      document.getElementById("generations-list").innerHTML = tableHtml;
+    })
+    .catch((error) => console.error("Error fetching generation data:", error));
+}
+
+function runMakerJsExample() {
+  var square = new makerjs.models.Square(100);
+  var svg = makerjs.exporter.toSVG(square);
+  document.getElementById("makerjs-example-output").innerHTML = svg;
+}
+
+window.onload = function () {
+  runMakerJsExample();
+  populateGenerations();
+};
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\templates\box.html
+# ---
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Existing Bulma CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <!-- Link to your external CSS file -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <!-- Existing JavaScript file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">Box Maker</h1>
+        <section class="divider-section"></section>
+        <form method="POST">
+          <div class="field">
+            <label class="label">Height</label>
+            <div class="control">
+              <input class="input" type="number" name="height" required />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Width</label>
+            <div class="control">
+              <input class="input" type="number" name="width" required />
+            </div>
+          </div>
+          <div class="field">
+            <div class="control">
+              <button class="button buttom-custom">Calculate</button>
+            </div>
+          </div>
+        </form>
+        <!-- ... (same table and logs layout) ... -->
+        {% if dimensions %}
+        <table style="padding-top: 20px" class="table">
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Dimension</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for part, (height, width) in dimensions.items() %}
+            <tr>
+              <td>{{ part }}</td>
+              <td>{{ height }}mm x {{ width }}mm</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+        <section class="divider-section"></section>
+        {% if log_messages %}
+        <div>
+          <h2>Logs</h2>
+          <ul>
+            {% for log in log_messages %}
+            <li>{{ log }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <!--End-->
+      </div>
+    </section>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\templates\case.html
+# ---
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Existing Bulma CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <!-- Link to your external CSS file -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <!-- Existing JavaScript file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">Case Maker</h1>
+        <section class="divider-section"></section>
+        <form method="POST">
+          <div class="field">
+            <label class="label">Height</label>
+            <div class="control">
+              <input class="input" type="number" name="height" required />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Width</label>
+            <div class="control">
+              <input class="input" type="number" name="width" required />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Desired Depth</label>
+            <div class="control">
+              <input
+                class="input"
+                type="number"
+                name="desired_depth"
+                required
+              />
+            </div>
+          </div>
+          <div class="field">
+            <div class="control">
+              <button class="button button-custom">Calculate</button>
+            </div>
+          </div>
+        </form>
+        <!-- ... (same table and logs layout) ... -->
+        <!-- Display an error message if no matches were found -->
+        {% if error %}
+        <div class="notification is-danger">
+          <button class="delete"></button>
+          {{ error }}
+        </div>
+        {% endif %} {% if dimensions_sets %} {% for dimensions in
+        dimensions_sets %}
+        <table style="padding-top: 20px" class="table">
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Dimension</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for part, size in dimensions.items() %}
+            <tr>
+              <td>{{ part }}</td>
+              <td>{{ size['height'] }}mm x {{ size['width'] }}mm</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endfor %} {% endif %}
+        <br />
+        <a href="/generations" class="button button-custom">Manage</a>
+        <section class="divider-section"></section>
+        {% if log_messages %}
+        <div>
+          <h2>Logs</h2>
+          <ul>
+            {% for log in log_messages %}
+            <li>{{ log }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <!--End-->
+      </div>
+    </section>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\templates\error.html
+# ---
+
+<!-- plot.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Existing Bulma CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <!-- Link to your external CSS file -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <!-- Existing JavaScript file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">Error</h1>
+        <section class="divider-section"></section>
+        {% if error %}
+        <div class="notification is-danger">
+          <button class="delete"></button>
+          {{ error }}
+        </div>
+        {% endif %}
+      </div>
+    </section>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\templates\generations.html
+# ---
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- ... other head elements ... -->
+    <!-- Existing Bulma CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <!-- Link to your external CSS file -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <!-- Existing JavaScript file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+      function deleteGeneration(id) {
+        if (confirm("Are you sure you want to delete this generation?")) {
+          fetch("/delete/" + id, { method: "POST" })
+            .then((response) => {
+              if (response.ok) {
+                window.location.reload();
+              } else {
+                alert("Error: Could not delete the generation.");
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              alert("An error occurred. Please try again.");
+            });
+        }
+      }
+
+      function plotGeneration(id) {
+        fetch("/plot/" + id)
+          .then((response) => response.text())
+          .then((plotHtml) => {
+            // Create a new window or an HTML element to display the plot
+            var plotWindow = window.open(
+              "",
+              "PlotWindow",
+              "width=800,height=600"
+            );
+            plotWindow.document.write(plotHtml);
+            plotWindow.document.close(); // Close the document stream
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("An error occurred while plotting. Please try again.");
+          });
+      }
+    </script>
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">Panel Sets</h1>
+        <section class="divider-section"></section>
+        <!-- ... other body elements ... -->
+        <table class="table is-striped is-fullwidth">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Height</th>
+              <th>Width</th>
+              <th>Depth</th>
+              <th>Panel Details</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for generation in generation_items %}
+            <tr>
+              <td>{{ generation['id'] }}</td>
+              <td>{{ generation['height'] }}</td>
+              <td>{{ generation['width'] }}</td>
+              <td>{{ generation['depth'] }}</td>
+              <td>
+                <div style="overflow-x: auto">
+                  <table class="table is-bordered is-narrow">
+                    <thead>
+                      <tr>
+                        <th>Panel</th>
+                        <th>Dimensions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for panel, sizes in generation['panels'].items() %}
+                      <tr>
+                        <td>{{ panel }}</td>
+                        <td>
+                          {{ sizes['height'] }}mm x {{ sizes['width'] }}mm
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+              <td>
+                <button
+                  class="button is-small is-info"
+                  onclick="plotGeneration({{ generation['id'] }})"
+                >
+                  Plot
+                </button>
+                <a
+                  href="{{ url_for('download_svg', generation_id=generation['id']) }}"
+                  class="button is-small is-primary"
+                >
+                  Download SVG
+                </a>
+                <a href="/makerjs-display" class="button is-small is-link">
+                  CAD
+                </a>
+                <button
+                  class="button is-small is-danger"
+                  onclick="deleteGeneration({{ generation['id'] }})"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\templates\index.html
+# ---
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Existing Bulma CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <!-- Link to your external CSS file -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <!-- Existing JavaScript file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </head>
+  <body>
+    <!-- Hero section with just the image -->
+    <div class="container is-0-fullhd">
+      <section
+        class="hero is-large"
+        style="
+          background-image: url('/static/images/logo_banner-gigapixel-art-height-780px.png');
+        "
+      >
+        <!-- No text in this container, it's just for the background image -->
+      </section>
+
+      <!-- Main content section where we will move the text -->
+      <section class="section">
+        <div class="container">
+          <!-- Text that was in the hero -->
+          <h1 class="title">Welcome to Genetic Woodworker</h1>
+          <p style="font-size: 16px; font-weight: bold" class="padding-below">
+            At Genetic Woodworker, we blend the artistry of woodworking with the
+            precision of advanced algorithms to transform how you approach your
+            projects. Our innovative app is designed for woodworkers who aspire
+            to make the most out of every piece of stock material, ensuring
+            minimal waste and optimal functionality.
+          </p>
+          <section class="divider-section"></section>
+          <div style="padding-top: 20px" class="columns">
+            <!-- Box Maker Card -->
+            <div class="column is-offset-1">
+              <div class="card">
+                <div class="card-image">
+                  <figure class="image is-256x256">
+                    <img
+                      src="/static/images/box_maker.png"
+                      alt="Box maker image"
+                    />
+                  </figure>
+                </div>
+                <div class="card-content">
+                  <div class="media">
+                    <div class="media-content">
+                      <p class="title is-4">Box Maker</p>
+                    </div>
+                  </div>
+                  <div class="content">
+                    <p>
+                      Input your stock material dimensions and the Box Maker
+                      will generate the largest possible box design, ensuring
+                      you use your material efficiently.
+                    </p>
+                    <br />
+                    <a href="/box" class="button button-custom">Make</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Case Maker Card -->
+            <div class="column is-offset-1">
+              <div class="card">
+                <div class="card-image">
+                  <figure class="image is-256x256">
+                    <img
+                      src="/static/images/case_maker.png"
+                      alt="Case maker image"
+                    />
+                  </figure>
+                </div>
+                <div class="card-content">
+                  <div class="media">
+                    <div class="media-content">
+                      <p class="title is-4">Case Maker</p>
+                    </div>
+                  </div>
+                  <div class="content">
+                    <p>
+                      The Case Maker adheres to your critical dimensions to
+                      generate a customized case, optimizing your stock material
+                      with precision.
+                    </p>
+                    <br />
+                    <a href="/case" class="button button-custom">Make</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <section class="divider-section"></section>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <h2 class="title">Coming soon!</h2>
+          <section class="divider-section"></section>
+          <ul>
+            <li>Visualization of the generated box or case in 2D and 3D</li>
+            <li>Downloadable plans</li>
+            <li>Top 10 genetic dimensions for user to choose from</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\templates\makerjs_display.html
+# ---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maker.js Display</title>
+    <!-- Maker.js and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/makerjs@0/target/js/browser.maker.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bezier-js@2/bezier.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/opentype.js@0/dist/opentype.js"></script>
+    <script src="./../static/js/makerjs_script.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+</head>
+  <body>
+    <h1>Maker.js Display</h1>
+    <!-- Section to display generations from the database -->
+    <div id="generations-list">
+      <h2>Generations</h2>
+      <div id="generations-list"></div>
+    </div>
+    <!-- Section for Maker.js specific functionality -->
+    <div id="makerjs-container">
+      <h2>Maker.js Area</h2>
+
+      <div id="makerjs-example">
+        <h3>Maker.js Example</h3>
+        <div id="makerjs-example-output"></div>
+      </div>
+    </div>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\templates\makerjs_display_old.html
+# ---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maker.js Display</title>
+    <!-- Maker.js and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/makerjs@0/target/js/browser.maker.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bezier-js@2/bezier.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/opentype.js@0/dist/opentype.js"></script>
+    <script src="./../static/js/makerjs_script.js"></script>
+  </head>
+  <body>
+    <h1>Maker.js Display</h1>
+    <!-- Section to display generations from the database -->
+    <div id="generations-list">
+      <h2>Generations</h2>
+      <div id="generations-list"></div>
+    </div>
+    <!-- Section for Maker.js specific functionality -->
+    <div id="makerjs-container">
+      <h2>Maker.js Area</h2>
+
+      <div id="makerjs-example">
+        <h3>Maker.js Example</h3>
+        <div id="makerjs-example-output"></div>
+      </div>
+    </div>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:\CODE\genetic_box_advanced\templates\svg_display.html
+# ---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SVG Display</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f7f7f7;
+      }
+      svg {
+        max-width: 100%;
+        max-height: 100vh;
+        border: 1px solid #ccc;
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- The SVG content will be injected here -->
+    {{ svg_content | safe }}
+  </body>
+</html>
+
+
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/static\css\bulma.min.css
+# ---
+
+/* Bulma CSS code goes here */
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/static\css\styles.css
+# ---
+
+:root {
+  /* Existing color scheme */
+  --black: #000500;
+  --bistre: #362417;
+  --cinereous: #92817a;
+  --almond: #f1dabf;
+  --dark-green: #01211c;
+  --light-grey: #f5f5f5; /* Light grey for the page background */
+}
+
+/* Setting the light grey background for the whole page */
+body {
+  background-color: var(--light-grey);
+}
+
+/* Card style */
+.card {
+  background: white; /* White background for the card */
+  border-radius: 8px; /* Rounded corners for the card */
+  box-shadow: 0 4px 8px 0 rgba(0,0,0,0.2); /* Simple shadow for depth */
+  padding: 20px; /* Spacing inside the card */
+  margin-bottom: 20px; /* Spacing between cards */
+  width: 75%;
+}
+
+/* .card-custom{
+  width: 50%;
+} */
+
+.hero {
+  /* background-image: url("https://placehold.co/1080x1920"); */
+  background-position: center -25px; /* Moves the image 50 pixels up from the center */
+  background-repeat: no-repeat;
+  background-size: contain;
+  background-attachment: fixed;
+  min-height: 50vh; /* Adjust the height as needed */
+}
+
+/* Style for the main content text moved out of hero */
+.main-content {
+  padding: 20px; /* Add padding as needed */
+  color: var(--cinereous); /* Set text color */
+}
+
+
+/* Adjust button styles to match the :root colors */
+.button {
+  background-color: var(--bistre); /* Using bistre from :root */
+  color: var(--almond); /* Using almond from :root */
+  border: 2px solid var(--dark-green); /* Border from :root color */
+  padding: 10px 20px; /* Padding for button */
+  text-transform: uppercase; /* Optional style */
+  font-weight: bold; /* Optional style */
+  transition: background-color 0.3s; /* Transition for hover effect */
+}
+
+.button:hover {
+  background-color: var(--black); /* Black color for button hover from :root */
+  color: var(--almond); /* Ensure text color is visible on hover */
+}
+  .link-image {
+    width: 150px; /* Width of image buttons */
+    height: 150px; /* Height of image buttons */
+    background-position: center;
+    background-size: cover;
+    display: inline-block;
+    margin: 10px;
+    border-radius: 5px;
+    border: 3px solid var(--dark-green); /* Dark green border */
+  }
+  .box-link {
+    background-image: url("https://placehold.co/150x150");
+  }
+  .case-link {
+    background-image: url("https://placehold.co/150x150");
+  }
+  /* Adjusting the title color */
+  .title {
+    color: var(--black); /* Black color for title */
+  }
+  /* Paragraph styling */
+  p {
+    color: var(--cinereous); /* Cinereous color for paragraph */
+  }
+  /* Custom button styles */
+  .button {
+    background-color: var(--bistre); /* Bistre background */
+    color: var(--almond); /* Almond text */
+    border: none;
+  }
+  .button:hover {
+    background-color: var(--black); /* Darken button on hover */
+  }
+
+  ul {
+    list-style: outside disc; /* This will add the bullet points back */
+    padding-left: 1em; /* This adds some space to the left of the list */
+  }
+
+  /* Add this to your styles.css */
+.button-custom {
+  background-color: var(--bistre); /* Using bistre from :root */
+  color: var(--almond); /* Using almond from :root */
+  border: 2px solid var(--dark-green); /* Border from :root color */
+  /* Add other styles like padding, text-transform if needed */
+}
+
+.button-custom:hover {
+  background-color: var(--black); /* Black color for button hover from :root */
+  color: var(--almond); /* Ensure text color is visible on hover */
+}
+
+/* Add this to your styles.css */
+.padding-below {
+  padding-bottom: 20px; /* Or whatever amount of padding you prefer */
+}
+
+.divider-section {
+  height: 3px;
+  background-color: var(--cinereous); /* or any color you prefer */
+}
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/static\js\main.js
+# ---
+
+// JavaScript code goes here
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/static\js\makerjs_script.js
+# ---
+
+// Correct instantiation of Maker.js object
+var makerjs = require("makerjs");
+
+var globalGenerations = []; // Global variable to store generations data
+
+function createTableWithData(generations) {
+  var table =
+    '<section class="section">' +
+    '<div class="container">' +
+    '<h1 class="title">Panel Sets</h1>' +
+    '<section class="divider-section"></section>' +
+    '<table class="table is-striped is-fullwidth">' +
+    "<thead>" +
+    "<tr>" +
+    "<th>ID</th>" +
+    "<th>Height</th>" +
+    "<th>Width</th>" +
+    "<th>Depth</th>" +
+    "<th>Panel Details</th>" +
+    "<th>Actions</th>" +
+    "</tr>" +
+    "</thead>" +
+    "<tbody>";
+
+  generations.forEach(function (generation) {
+    // Parse panels JSON
+    var panels = JSON.parse(generation.panels);
+
+    table +=
+      "<tr>" +
+      "<td>" +
+      generation.id +
+      "</td>" +
+      "<td>" +
+      generation.height +
+      "</td>" +
+      "<td>" +
+      generation.width +
+      "</td>" +
+      "<td>" +
+      generation.depth +
+      "</td>" +
+      "<td>" +
+      '<div style="overflow-x: auto">' +
+      '<table class="table is-bordered is-narrow">' +
+      "<thead>" +
+      "<tr>" +
+      "<th>Panel</th>" +
+      "<th>Dimensions</th>" +
+      "</tr>" +
+      "</thead>" +
+      "<tbody>";
+
+    Object.entries(panels).forEach(([panel, sizes]) => {
+      table +=
+        "<tr>" +
+        "<td>" +
+        panel +
+        "</td>" +
+        "<td>" +
+        sizes.height +
+        "mm x " +
+        sizes.width +
+        "mm</td>" +
+        "</tr>";
+    });
+
+    table +=
+      "</tbody></table></div></td><td>" +
+      '<button class="button is-small is-info" onclick="plotGeneration(globalGenerations, ' +
+      generation.id +
+      ')">Plot</button>' +
+      "</td></tr>";
+  });
+
+  table += "</tbody></table></div></section>";
+  return table;
+}
+
+// Function to plot a generation using Maker.js
+function plotGeneration(generations, generationId) {
+  //console.log("Generation ID:", generationId); // Log the generationId
+  //console.log("Generations:", generations); // Log the contents of the globalGenerations
+
+  var generation = generations.find((g) => g.id === generationId);
+  if (!generation) {
+    console.log("Generation not found");
+    return;
+  }
+
+  // Parse panels JSON and draw each panel
+  var panels = JSON.parse(generation.panels);
+  Object.entries(panels).forEach(([panel, sizes]) => {
+    drawPanel(panel, sizes.height, sizes.width);
+  });
+}
+
+// Function to draw a panel using Maker.js
+function drawPanel(panelName, height, width) {
+  // Implementation of panel drawing using Maker.js goes here
+  console.log(
+    "Drawing " +
+      panelName +
+      " with height: " +
+      height +
+      "mm and width: " +
+      width +
+      "mm"
+  );
+  // You will need to implement the actual drawing logic as per your requirements
+}
+
+// Implementing the populateGenerations function to fetch data from the Flask backend
+function populateGenerations() {
+  fetch("/api/generations") // Replace with the correct API endpoint if different
+    .then((response) => response.json())
+    .then((generations) => {
+      globalGenerations = generations;
+      var tableHtml = createTableWithData(generations);
+      document.getElementById("generations-list").innerHTML = tableHtml;
+    })
+    .catch((error) => console.error("Error fetching generation data:", error));
+}
+
+function runMakerJsExample() {
+  var square = new makerjs.models.Square(100);
+  var svg = makerjs.exporter.toSVG(square);
+  document.getElementById("makerjs-example-output").innerHTML = svg;
+}
+
+window.onload = function () {
+  runMakerJsExample();
+  populateGenerations();
+};
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/static\js\modified_makerjs_script.js
+# ---
+
+
+// Correct instantiation of Maker.js object
+var makerjs = require("makerjs");
+
+function createTableWithData(generations) {
+  var table =
+    '<section class="section">' +
+    '<div class="container">' +
+    '<h1 class="title">Panel Sets</h1>' +
+    '<section class="divider-section"></section>' +
+    '<table class="table is-striped is-fullwidth">' +
+    "<thead>" +
+    "<tr>" +
+    "<th>ID</th>" +
+    "<th>Height</th>" +
+    "<th>Width</th>" +
+    "<th>Depth</th>" +
+    "<th>Panel Details</th>" +
+    "<th>Actions</th>" +
+    "</tr>" +
+    "</thead>" +
+    "<tbody>";
+
+  generations.forEach(function (generation) {
+    // Parse panels JSON
+    var panels = JSON.parse(generation.panels);
+
+    table +=
+      "<tr>" +
+      "<td>" +
+      generation.id +
+      "</td>" +
+      "<td>" +
+      generation.height +
+      "</td>" +
+      "<td>" +
+      generation.width +
+      "</td>" +
+      "<td>" +
+      generation.depth +
+      "</td>" +
+      "<td>" +
+      '<div style="overflow-x: auto">' +
+      '<table class="table is-bordered is-narrow">' +
+      "<thead>" +
+      "<tr>" +
+      "<th>Panel</th>" +
+      "<th>Dimensions</th>" +
+      "</tr>" +
+      "</thead>" +
+      "<tbody>";
+
+    Object.entries(panels).forEach(([panel, sizes]) => {
+      table +=
+        "<tr>" +
+        "<td>" +
+        panel +
+        "</td>" +
+        "<td>" +
+        sizes.height +
+        "mm x " +
+        sizes.width +
+        "mm</td>" +
+        "</tr>";
+    });
+
+    table +=
+      "</tbody></table></div></td><td>" +
+      '<button class="button is-small is-info" onclick="plotGeneration(generations, ' +
+      generation.id +
+      ')">Plot</button>' +
+      "</td></tr>";
+  });
+
+  table += "</tbody></table></div></section>";
+  return table;
+}
+
+// Function to plot a generation using Maker.js
+function plotGeneration(generations, generationId) {
+  // Find the generation data
+  var generation = generations.find((g) => g.id === generationId);
+  if (!generation) {
+    console.log("Generation not found");
+    return;
+  }
+
+  // Parse panels JSON and draw each panel
+  var panels = JSON.parse(generation.panels);
+  Object.entries(panels).forEach(([panel, sizes]) => {
+    drawPanel(panel, sizes.height, sizes.width);
+  });
+}
+
+// Function to draw a panel using Maker.js
+function drawPanel(panelName, height, width) {
+  // Implementation of panel drawing using Maker.js goes here
+  console.log(
+    "Drawing " +
+      panelName +
+      " with height: " +
+      height +
+      "mm and width: " +
+      width +
+      "mm"
+  );
+  // You will need to implement the actual drawing logic as per your requirements
+}
+
+// Implementing the populateGenerations function to fetch data from the Flask backend
+function populateGenerations() {
+  fetch("/api/generations") // Replace with the correct API endpoint if different
+    .then((response) => response.json())
+    .then((generations) => {
+      var tableHtml = createTableWithData(generations);
+      document.getElementById("generations-list").innerHTML = tableHtml;
+    })
+    .catch((error) => console.error("Error fetching generation data:", error));
+}
+
+function runMakerJsExample() {
+  var square = new makerjs.models.Square(100);
+  var svg = makerjs.exporter.toSVG(square);
+  document.getElementById("makerjs-example-output").innerHTML = svg;
+}
+
+window.onload = function () {
+  runMakerJsExample();
+  populateGenerations();
+};
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/static\js\modified_makerjs_script_global.js
+# ---
+
+
+var globalGenerations = []; // Global variable to store generations data
+
+
+// Correct instantiation of Maker.js object
+var makerjs = require("makerjs");
+
+function createTableWithData(generations) {
+  var table =
+    '<section class="section">' +
+    '<div class="container">' +
+    '<h1 class="title">Panel Sets</h1>' +
+    '<section class="divider-section"></section>' +
+    '<table class="table is-striped is-fullwidth">' +
+    "<thead>" +
+    "<tr>" +
+    "<th>ID</th>" +
+    "<th>Height</th>" +
+    "<th>Width</th>" +
+    "<th>Depth</th>" +
+    "<th>Panel Details</th>" +
+    "<th>Actions</th>" +
+    "</tr>" +
+    "</thead>" +
+    "<tbody>";
+
+  generations.forEach(function (generation) {
+    // Parse panels JSON
+    var panels = JSON.parse(generation.panels);
+
+    table +=
+      "<tr>" +
+      "<td>" +
+      generation.id +
+      "</td>" +
+      "<td>" +
+      generation.height +
+      "</td>" +
+      "<td>" +
+      generation.width +
+      "</td>" +
+      "<td>" +
+      generation.depth +
+      "</td>" +
+      "<td>" +
+      '<div style="overflow-x: auto">' +
+      '<table class="table is-bordered is-narrow">' +
+      "<thead>" +
+      "<tr>" +
+      "<th>Panel</th>" +
+      "<th>Dimensions</th>" +
+      "</tr>" +
+      "</thead>" +
+      "<tbody>";
+
+    Object.entries(panels).forEach(([panel, sizes]) => {
+      table +=
+        "<tr>" +
+        "<td>" +
+        panel +
+        "</td>" +
+        "<td>" +
+        sizes.height +
+        "mm x " +
+        sizes.width +
+        "mm</td>" +
+        "</tr>";
+    });
+
+    table +=
+      "</tbody></table></div></td><td>" +
+      '<button class="button is-small is-info" onclick="plotGeneration(generations, ' +
+      generation.id +
+      ')">Plot</button>' +
+      "</td></tr>";
+  });
+
+  table += "</tbody></table></div></section>";
+  return table;
+}
+
+// Function to plot a generation using Maker.js
+function plotGeneration(generationId) {
+  // Find the generation data
+  var generation = globalGenerations.find((g) => g.id === generationId);
+  if (!generation) {
+    console.log("Generation not found");
+    return;
+  }
+
+  // Parse panels JSON and draw each panel
+  var panels = JSON.parse(generation.panels);
+  Object.entries(panels).forEach(([panel, sizes]) => {
+    drawPanel(panel, sizes.height, sizes.width);
+  });
+}
+
+// Function to draw a panel using Maker.js
+function drawPanel(panelName, height, width) {
+  // Implementation of panel drawing using Maker.js goes here
+  console.log(
+    "Drawing " +
+      panelName +
+      " with height: " +
+      height +
+      "mm and width: " +
+      width +
+      "mm"
+  );
+  // You will need to implement the actual drawing logic as per your requirements
+}
+
+// Implementing the populateGenerations function to fetch data from the Flask backend
+function populateGenerations() {
+  fetch("/api/generations") // Replace with the correct API endpoint if different
+    .then((response) => response.json())
+    .then((generations) => {
+      globalGenerations = generations;
+    var tableHtml = createTableWithData(generations);
+      document.getElementById("generations-list").innerHTML = tableHtml;
+    })
+    .catch((error) => console.error("Error fetching generation data:", error));
+}
+
+function runMakerJsExample() {
+  var square = new makerjs.models.Square(100);
+  var svg = makerjs.exporter.toSVG(square);
+  document.getElementById("makerjs-example-output").innerHTML = svg;
+}
+
+window.onload = function () {
+  runMakerJsExample();
+  populateGenerations();
+};
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/templates\box.html
+# ---
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Existing Bulma CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <!-- Link to your external CSS file -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <!-- Existing JavaScript file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">Box Maker</h1>
+        <section class="divider-section"></section>
+        <form method="POST">
+          <div class="field">
+            <label class="label">Height</label>
+            <div class="control">
+              <input class="input" type="number" name="height" required />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Width</label>
+            <div class="control">
+              <input class="input" type="number" name="width" required />
+            </div>
+          </div>
+          <div class="field">
+            <div class="control">
+              <button class="button buttom-custom">Calculate</button>
+            </div>
+          </div>
+        </form>
+        <!-- ... (same table and logs layout) ... -->
+        {% if dimensions %}
+        <table style="padding-top: 20px" class="table">
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Dimension</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for part, (height, width) in dimensions.items() %}
+            <tr>
+              <td>{{ part }}</td>
+              <td>{{ height }}mm x {{ width }}mm</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endif %}
+        <section class="divider-section"></section>
+        {% if log_messages %}
+        <div>
+          <h2>Logs</h2>
+          <ul>
+            {% for log in log_messages %}
+            <li>{{ log }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <!--End-->
+      </div>
+    </section>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/templates\case.html
+# ---
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Existing Bulma CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <!-- Link to your external CSS file -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <!-- Existing JavaScript file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">Case Maker</h1>
+        <section class="divider-section"></section>
+        <form method="POST">
+          <div class="field">
+            <label class="label">Height</label>
+            <div class="control">
+              <input class="input" type="number" name="height" required />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Width</label>
+            <div class="control">
+              <input class="input" type="number" name="width" required />
+            </div>
+          </div>
+          <div class="field">
+            <label class="label">Desired Depth</label>
+            <div class="control">
+              <input
+                class="input"
+                type="number"
+                name="desired_depth"
+                required
+              />
+            </div>
+          </div>
+          <div class="field">
+            <div class="control">
+              <button class="button button-custom">Calculate</button>
+            </div>
+          </div>
+        </form>
+        <!-- ... (same table and logs layout) ... -->
+        <!-- Display an error message if no matches were found -->
+        {% if error %}
+        <div class="notification is-danger">
+          <button class="delete"></button>
+          {{ error }}
+        </div>
+        {% endif %} {% if dimensions_sets %} {% for dimensions in
+        dimensions_sets %}
+        <table style="padding-top: 20px" class="table">
+          <thead>
+            <tr>
+              <th>Part</th>
+              <th>Dimension</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for part, size in dimensions.items() %}
+            <tr>
+              <td>{{ part }}</td>
+              <td>{{ size['height'] }}mm x {{ size['width'] }}mm</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% endfor %} {% endif %}
+        <br />
+        <a href="/generations" class="button button-custom">Manage</a>
+        <section class="divider-section"></section>
+        {% if log_messages %}
+        <div>
+          <h2>Logs</h2>
+          <ul>
+            {% for log in log_messages %}
+            <li>{{ log }}</li>
+            {% endfor %}
+          </ul>
+        </div>
+        {% endif %}
+        <!--End-->
+      </div>
+    </section>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/templates\error.html
+# ---
+
+<!-- plot.html -->
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <!-- Existing Bulma CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <!-- Link to your external CSS file -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <!-- Existing JavaScript file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">Error</h1>
+        <section class="divider-section"></section>
+        {% if error %}
+        <div class="notification is-danger">
+          <button class="delete"></button>
+          {{ error }}
+        </div>
+        {% endif %}
+      </div>
+    </section>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/templates\generations.html
+# ---
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- ... other head elements ... -->
+    <!-- Existing Bulma CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <!-- Link to your external CSS file -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <!-- Existing JavaScript file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script>
+      function deleteGeneration(id) {
+        if (confirm("Are you sure you want to delete this generation?")) {
+          fetch("/delete/" + id, { method: "POST" })
+            .then((response) => {
+              if (response.ok) {
+                window.location.reload();
+              } else {
+                alert("Error: Could not delete the generation.");
+              }
+            })
+            .catch((error) => {
+              console.error("Error:", error);
+              alert("An error occurred. Please try again.");
+            });
+        }
+      }
+
+      function plotGeneration(id) {
+        fetch("/plot/" + id)
+          .then((response) => response.text())
+          .then((plotHtml) => {
+            // Create a new window or an HTML element to display the plot
+            var plotWindow = window.open(
+              "",
+              "PlotWindow",
+              "width=800,height=600"
+            );
+            plotWindow.document.write(plotHtml);
+            plotWindow.document.close(); // Close the document stream
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+            alert("An error occurred while plotting. Please try again.");
+          });
+      }
+    </script>
+  </head>
+  <body>
+    <section class="section">
+      <div class="container">
+        <h1 class="title">Panel Sets</h1>
+        <section class="divider-section"></section>
+        <!-- ... other body elements ... -->
+        <table class="table is-striped is-fullwidth">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Height</th>
+              <th>Width</th>
+              <th>Depth</th>
+              <th>Panel Details</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for generation in generation_items %}
+            <tr>
+              <td>{{ generation['id'] }}</td>
+              <td>{{ generation['height'] }}</td>
+              <td>{{ generation['width'] }}</td>
+              <td>{{ generation['depth'] }}</td>
+              <td>
+                <div style="overflow-x: auto">
+                  <table class="table is-bordered is-narrow">
+                    <thead>
+                      <tr>
+                        <th>Panel</th>
+                        <th>Dimensions</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {% for panel, sizes in generation['panels'].items() %}
+                      <tr>
+                        <td>{{ panel }}</td>
+                        <td>
+                          {{ sizes['height'] }}mm x {{ sizes['width'] }}mm
+                        </td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                </div>
+              </td>
+              <td>
+                <button
+                  class="button is-small is-info"
+                  onclick="plotGeneration({{ generation['id'] }})"
+                >
+                  Plot
+                </button>
+                <a
+                  href="{{ url_for('download_svg', generation_id=generation['id']) }}"
+                  class="button is-small is-primary"
+                >
+                  Download SVG
+                </a>
+                <a href="/makerjs-display" class="button is-small is-link">
+                  CAD
+                </a>
+                <button
+                  class="button is-small is-danger"
+                  onclick="deleteGeneration({{ generation['id'] }})"
+                >
+                  Delete
+                </button>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/templates\index.html
+# ---
+
+<!DOCTYPE html>
+<html>
+  <head>
+    <!-- Existing Bulma CSS -->
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <!-- Link to your external CSS file -->
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/styles.css') }}"
+    />
+    <!-- Existing JavaScript file -->
+    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+  </head>
+  <body>
+    <!-- Hero section with just the image -->
+    <div class="container is-0-fullhd">
+      <section
+        class="hero is-large"
+        style="
+          background-image: url('/static/images/logo_banner-gigapixel-art-height-780px.png');
+        "
+      >
+        <!-- No text in this container, it's just for the background image -->
+      </section>
+
+      <!-- Main content section where we will move the text -->
+      <section class="section">
+        <div class="container">
+          <!-- Text that was in the hero -->
+          <h1 class="title">Welcome to Genetic Woodworker</h1>
+          <p style="font-size: 16px; font-weight: bold" class="padding-below">
+            At Genetic Woodworker, we blend the artistry of woodworking with the
+            precision of advanced algorithms to transform how you approach your
+            projects. Our innovative app is designed for woodworkers who aspire
+            to make the most out of every piece of stock material, ensuring
+            minimal waste and optimal functionality.
+          </p>
+          <section class="divider-section"></section>
+          <div style="padding-top: 20px" class="columns">
+            <!-- Box Maker Card -->
+            <div class="column is-offset-1">
+              <div class="card">
+                <div class="card-image">
+                  <figure class="image is-256x256">
+                    <img
+                      src="/static/images/box_maker.png"
+                      alt="Box maker image"
+                    />
+                  </figure>
+                </div>
+                <div class="card-content">
+                  <div class="media">
+                    <div class="media-content">
+                      <p class="title is-4">Box Maker</p>
+                    </div>
+                  </div>
+                  <div class="content">
+                    <p>
+                      Input your stock material dimensions and the Box Maker
+                      will generate the largest possible box design, ensuring
+                      you use your material efficiently.
+                    </p>
+                    <br />
+                    <a href="/box" class="button button-custom">Make</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <!-- Case Maker Card -->
+            <div class="column is-offset-1">
+              <div class="card">
+                <div class="card-image">
+                  <figure class="image is-256x256">
+                    <img
+                      src="/static/images/case_maker.png"
+                      alt="Case maker image"
+                    />
+                  </figure>
+                </div>
+                <div class="card-content">
+                  <div class="media">
+                    <div class="media-content">
+                      <p class="title is-4">Case Maker</p>
+                    </div>
+                  </div>
+                  <div class="content">
+                    <p>
+                      The Case Maker adheres to your critical dimensions to
+                      generate a customized case, optimizing your stock material
+                      with precision.
+                    </p>
+                    <br />
+                    <a href="/case" class="button button-custom">Make</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <section class="divider-section"></section>
+      </section>
+
+      <section class="section">
+        <div class="container">
+          <h2 class="title">Coming soon!</h2>
+          <section class="divider-section"></section>
+          <ul>
+            <li>Visualization of the generated box or case in 2D and 3D</li>
+            <li>Downloadable plans</li>
+            <li>Top 10 genetic dimensions for user to choose from</li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/templates\makerjs_display.html
+# ---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maker.js Display</title>
+    <!-- Maker.js and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/makerjs@0/target/js/browser.maker.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bezier-js@2/bezier.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/opentype.js@0/dist/opentype.js"></script>
+    <script src="./../static/js/makerjs_script.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
+</head>
+  <body>
+    <h1>Maker.js Display</h1>
+    <!-- Section to display generations from the database -->
+    <div id="generations-list">
+      <h2>Generations</h2>
+      <div id="generations-list"></div>
+    </div>
+    <!-- Section for Maker.js specific functionality -->
+    <div id="makerjs-container">
+      <h2>Maker.js Area</h2>
+
+      <div id="makerjs-example">
+        <h3>Maker.js Example</h3>
+        <div id="makerjs-example-output"></div>
+      </div>
+    </div>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/templates\makerjs_display_old.html
+# ---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maker.js Display</title>
+    <!-- Maker.js and dependencies -->
+    <script src="https://cdn.jsdelivr.net/npm/makerjs@0/target/js/browser.maker.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bezier-js@2/bezier.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/opentype.js@0/dist/opentype.js"></script>
+    <script src="./../static/js/makerjs_script.js"></script>
+  </head>
+  <body>
+    <h1>Maker.js Display</h1>
+    <!-- Section to display generations from the database -->
+    <div id="generations-list">
+      <h2>Generations</h2>
+      <div id="generations-list"></div>
+    </div>
+    <!-- Section for Maker.js specific functionality -->
+    <div id="makerjs-container">
+      <h2>Maker.js Area</h2>
+
+      <div id="makerjs-example">
+        <h3>Maker.js Example</h3>
+        <div id="makerjs-example-output"></div>
+      </div>
+    </div>
+  </body>
+</html>
+
+
+# ---
+# Filename: F:/CODE/genetic_box_advanced/templates\svg_display.html
+# ---
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SVG Display</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        background-color: #f7f7f7;
+      }
+      svg {
+        max-width: 100%;
+        max-height: 100vh;
+        border: 1px solid #ccc;
+        box-shadow: 0 0 8px rgba(0, 0, 0, 0.1);
+      }
+    </style>
+  </head>
+  <body>
+    <!-- The SVG content will be injected here -->
+    {{ svg_content | safe }}
+  </body>
+</html>
+
+

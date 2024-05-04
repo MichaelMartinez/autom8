@@ -3,6 +3,7 @@
 
 import sys
 import PyPDF2
+import re
 
 
 def pdf_to_text(pdf_file_path, text_file_path):
@@ -12,6 +13,13 @@ def pdf_to_text(pdf_file_path, text_file_path):
         with open(text_file_path, "w", encoding="utf-8") as text_file:
             for page_num in range(len(pdf_reader.pages)):
                 page = pdf_reader.pages[page_num].extract_text()
+                # clean the text
+                page = page.replace("\n", " ")
+                # keep bullet points
+                page = re.sub(r"\s-\s", " - ", page)
+                page = re.sub(r"\s\*\s", " * ", page)
+                # remove extra spaces
+                page = re.sub(r"\s+", " ", page)
                 text_file.write(page)
 
     print(f"PDF file {pdf_file_path} has been converted to text file {text_file_path}")
