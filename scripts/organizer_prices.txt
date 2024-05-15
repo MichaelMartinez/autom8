@@ -1,0 +1,231 @@
+Craftsman 3 Pack:
+  Dimensions (LxWxH): 11.5 x 8.5 x 2.5 inches
+  Quantity: 3
+  Total Volume: 733.1250 cubic inches
+  Cost: $25
+  Price per cubic inch: $0.0341
+  Price per cubic millimeter: $0.000002
+  Price per cubic foot: $58.9258
+  Price per cubic meter: $2080.9461
+
+Home Depot HDX - 2pk:
+  Dimensions (LxWxH): 15 x 11.6 x 2.6 inches
+  Quantity: 2
+  Total Volume: 904.8000 cubic inches
+  Cost: $10
+  Price per cubic inch: $0.0111
+  Price per cubic millimeter: $0.000001
+  Price per cubic foot: $19.0981
+  Price per cubic meter: $674.4446
+
+Dewalt 20 part pro 2pk:
+  Dimensions (LxWxH): 17.4 x 11 x 3 inches
+  Quantity: 2
+  Total Volume: 1148.4000 cubic inches
+  Cost: $33
+  Price per cubic inch: $0.0287
+  Price per cubic millimeter: $0.000002
+  Price per cubic foot: $49.6552
+  Price per cubic meter: $1753.5559
+
+Milwaukee Packout 11 compartment:
+  Dimensions (LxWxH): 19 x 14.5 x 6.6 inches
+  Quantity: 1
+  Total Volume: 1818.3000 cubic inches
+  Cost: $50
+  Price per cubic inch: $0.0275
+  Price per cubic millimeter: $0.000002
+  Price per cubic foot: $47.5169
+  Price per cubic meter: $1678.0439
+
+Husky 22 compartment:
+  Dimensions (LxWxH): 22.25 x 12.5 x 6.34 inches
+  Quantity: 1
+  Total Volume: 1763.3125 cubic inches
+  Cost: $40
+  Price per cubic inch: $0.0227
+  Price per cubic millimeter: $0.000001
+  Price per cubic foot: $39.1990
+  Price per cubic meter: $1384.2979
+
+Connect 2-Drawer 13-Compartment Small Parts Organizer:
+  Dimensions (LxWxH): 21.5 x 12.2 x 7.25 inches
+  Quantity: 1
+  Total Volume: 1901.6750 cubic inches
+  Cost: $45
+  Price per cubic inch: $0.0237
+  Price per cubic millimeter: $0.000001
+  Price per cubic foot: $40.8903
+  Price per cubic meter: $1444.0262
+
+Husky 10 compartment 2pk:
+  Dimensions (LxWxH): 22 x 12 x 4.5 inches
+  Quantity: 2
+  Total Volume: 2376.0000 cubic inches
+  Cost: $40
+  Price per cubic inch: $0.0168
+  Price per cubic millimeter: $0.000001
+  Price per cubic foot: $29.0909
+  Price per cubic meter: $1027.3358
+
+Ryobi 10 compartment:
+  Dimensions (LxWxH): 20 x 18 x 6 inches
+  Quantity: 1
+  Total Volume: 2160.0000 cubic inches
+  Cost: $47
+  Price per cubic inch: $0.0218
+  Price per cubic millimeter: $0.000001
+  Price per cubic foot: $37.6000
+  Price per cubic meter: $1327.8315
+
+Ridgid 10 compartment:
+  Dimensions (LxWxH): 22 x 13 x 5 inches
+  Quantity: 1
+  Total Volume: 1430.0000 cubic inches
+  Cost: $35
+  Price per cubic inch: $0.0245
+  Price per cubic millimeter: $0.000001
+  Price per cubic foot: $42.2937
+  Price per cubic meter: $1493.5881
+
+Walmart Hart small parts with bins:
+  Dimensions (LxWxH): 20.3 x 13.6 x 4.5 inches
+  Quantity: 1
+  Total Volume: 1242.3600 cubic inches
+  Cost: $22
+  Price per cubic inch: $0.0177
+  Price per cubic millimeter: $0.000001
+  Price per cubic foot: $30.5998
+  Price per cubic meter: $1080.6227
+
+HART Stack System Tool Box with Small Blue Organizer & Dividers:
+  Dimensions (LxWxH): 21 x 13.6 x 6 inches
+  Quantity: 1
+  Total Volume: 1713.6000 cubic inches
+  Cost: $29
+  Price per cubic inch: $0.0169
+  Price per cubic millimeter: $0.000001
+  Price per cubic foot: $29.2437
+  Price per cubic meter: $1032.7314
+
+BOSCH L-BOXX-2 6 In. x 14 In. x 17.5 In.:
+  Dimensions (LxWxH): 17.5 x 14 x 6 inches
+  Quantity: 1
+  Total Volume: 1470.0000 cubic inches
+  Cost: $50
+  Price per cubic inch: $0.0340
+  Price per cubic millimeter: $0.000002
+  Price per cubic foot: $58.7755
+  Price per cubic meter: $2075.6376
+
+Festool 204840 Systainer:
+  Dimensions (LxWxH): 15.6 x 11.6 x 4.125 inches
+  Quantity: 1
+  Total Volume: 746.4600 cubic inches
+  Cost: $67
+  Price per cubic inch: $0.0898
+  Price per cubic millimeter: $0.000005
+  Price per cubic foot: $155.1001
+  Price per cubic meter: $5477.3074
+
+Hart Catalever, No Stack - 18.20 x 9.70 x 11.80 Inches:
+  Dimensions (LxWxH): 18.2 x 11.8 x 9.7 inches
+  Quantity: 1
+  Total Volume: 2083.1720 cubic inches
+  Cost: $25
+  Price per cubic inch: $0.0120
+  Price per cubic millimeter: $0.000001
+  Price per cubic foot: $20.7376
+  Price per cubic meter: $732.3416
+
+Toughbuilt TechStack small part org:
+  Dimensions (LxWxH): 21 x 16 x 7.2 inches
+  Quantity: 1
+  Total Volume: 2419.2000 cubic inches
+  Cost: $70
+  Price per cubic inch: $0.0289
+  Price per cubic millimeter: $0.000002
+  Price per cubic foot: $50.0000
+  Price per cubic meter: $1765.7333
+
+Metabo Metabox 215:
+  Dimensions (LxWxH): 15.6 x 11.65 x 8.46 inches
+  Quantity: 1
+  Total Volume: 1537.5204 cubic inches
+  Cost: $38
+  Price per cubic inch: $0.0247
+  Price per cubic millimeter: $0.000002
+  Price per cubic foot: $42.7077
+  Price per cubic meter: $1508.2091
+
+Organizers sorted by price per cubic inch:
+Home Depot HDX - 2pk - Price per cubic inch: $0.0111
+Hart Catalever, No Stack - 18.20 x 9.70 x 11.80 Inches - Price per cubic inch: $0.0120
+Husky 10 compartment 2pk - Price per cubic inch: $0.0168
+HART Stack System Tool Box with Small Blue Organizer & Dividers - Price per cubic inch: $0.0169
+Walmart Hart small parts with bins - Price per cubic inch: $0.0177
+Ryobi 10 compartment - Price per cubic inch: $0.0218
+Husky 22 compartment - Price per cubic inch: $0.0227
+Connect 2-Drawer 13-Compartment Small Parts Organizer - Price per cubic inch: $0.0237
+Ridgid 10 compartment - Price per cubic inch: $0.0245
+Metabo Metabox 215 - Price per cubic inch: $0.0247
+Milwaukee Packout 11 compartment - Price per cubic inch: $0.0275
+Dewalt 20 part pro 2pk - Price per cubic inch: $0.0287
+Toughbuilt TechStack small part org - Price per cubic inch: $0.0289
+BOSCH L-BOXX-2 6 In. x 14 In. x 17.5 In. - Price per cubic inch: $0.0340
+Craftsman 3 Pack - Price per cubic inch: $0.0341
+Festool 204840 Systainer - Price per cubic inch: $0.0898
+
+Organizers sorted by price per cubic millimeter:
+Home Depot HDX - 2pk - Price per cubic millimeter: $0.000001
+Hart Catalever, No Stack - 18.20 x 9.70 x 11.80 Inches - Price per cubic millimeter: $0.000001
+Husky 10 compartment 2pk - Price per cubic millimeter: $0.000001
+HART Stack System Tool Box with Small Blue Organizer & Dividers - Price per cubic millimeter: $0.000001
+Walmart Hart small parts with bins - Price per cubic millimeter: $0.000001
+Ryobi 10 compartment - Price per cubic millimeter: $0.000001
+Husky 22 compartment - Price per cubic millimeter: $0.000001
+Connect 2-Drawer 13-Compartment Small Parts Organizer - Price per cubic millimeter: $0.000001
+Ridgid 10 compartment - Price per cubic millimeter: $0.000001
+Metabo Metabox 215 - Price per cubic millimeter: $0.000002
+Milwaukee Packout 11 compartment - Price per cubic millimeter: $0.000002
+Dewalt 20 part pro 2pk - Price per cubic millimeter: $0.000002
+Toughbuilt TechStack small part org - Price per cubic millimeter: $0.000002
+BOSCH L-BOXX-2 6 In. x 14 In. x 17.5 In. - Price per cubic millimeter: $0.000002
+Craftsman 3 Pack - Price per cubic millimeter: $0.000002
+Festool 204840 Systainer - Price per cubic millimeter: $0.000005
+
+Organizers sorted by price per cubic foot:
+Home Depot HDX - 2pk - Price per cubic foot: $19.0981
+Hart Catalever, No Stack - 18.20 x 9.70 x 11.80 Inches - Price per cubic foot: $20.7376
+Husky 10 compartment 2pk - Price per cubic foot: $29.0909
+HART Stack System Tool Box with Small Blue Organizer & Dividers - Price per cubic foot: $29.2437
+Walmart Hart small parts with bins - Price per cubic foot: $30.5998
+Ryobi 10 compartment - Price per cubic foot: $37.6000
+Husky 22 compartment - Price per cubic foot: $39.1990
+Connect 2-Drawer 13-Compartment Small Parts Organizer - Price per cubic foot: $40.8903
+Ridgid 10 compartment - Price per cubic foot: $42.2937
+Metabo Metabox 215 - Price per cubic foot: $42.7077
+Milwaukee Packout 11 compartment - Price per cubic foot: $47.5169
+Dewalt 20 part pro 2pk - Price per cubic foot: $49.6552
+Toughbuilt TechStack small part org - Price per cubic foot: $50.0000
+BOSCH L-BOXX-2 6 In. x 14 In. x 17.5 In. - Price per cubic foot: $58.7755
+Craftsman 3 Pack - Price per cubic foot: $58.9258
+Festool 204840 Systainer - Price per cubic foot: $155.1001
+
+Organizers sorted by price per cubic meter:
+Home Depot HDX - 2pk - Price per cubic meter: $674.4446
+Hart Catalever, No Stack - 18.20 x 9.70 x 11.80 Inches - Price per cubic meter: $732.3416
+Husky 10 compartment 2pk - Price per cubic meter: $1027.3358
+HART Stack System Tool Box with Small Blue Organizer & Dividers - Price per cubic meter: $1032.7314
+Walmart Hart small parts with bins - Price per cubic meter: $1080.6227
+Ryobi 10 compartment - Price per cubic meter: $1327.8315
+Husky 22 compartment - Price per cubic meter: $1384.2979
+Connect 2-Drawer 13-Compartment Small Parts Organizer - Price per cubic meter: $1444.0262
+Ridgid 10 compartment - Price per cubic meter: $1493.5881
+Metabo Metabox 215 - Price per cubic meter: $1508.2091
+Milwaukee Packout 11 compartment - Price per cubic meter: $1678.0439
+Dewalt 20 part pro 2pk - Price per cubic meter: $1753.5559
+Toughbuilt TechStack small part org - Price per cubic meter: $1765.7333
+BOSCH L-BOXX-2 6 In. x 14 In. x 17.5 In. - Price per cubic meter: $2075.6376
+Craftsman 3 Pack - Price per cubic meter: $2080.9461
+Festool 204840 Systainer - Price per cubic meter: $5477.3074

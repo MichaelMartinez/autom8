@@ -1,3 +1,6 @@
+# Graphical Representation
+import matplotlib.pyplot as plt
+
 # Define a function to calculate the total cost of ownership for buying a GPU
 def gpu_cost(gpu_cost, energy_price, gpu_wattage, depreciation_rate, usage_hours_per_year, depreciation_years):
     # Calculate the electricity cost per year
@@ -53,3 +56,37 @@ api_total_cost_per_year = api_cost(tokens_input_per_year_input, tokens_output_pe
 print("Total cost of ownership per year for buying a GPU: ${:.2f}".format(gpu_total_cost_per_year))
 print("Total cost of ownership per year for using an API: ${:.2f}".format(api_total_cost_per_year))
 
+# Multi-year cost projection
+def multi_year_projection(initial_cost, years, annual_operation_cost):
+    total_costs = [initial_cost + annual_operation_cost]
+    for year in range(1, years):
+        total_costs.append(total_costs[-1] + annual_operation_cost)
+    return total_costs
+
+years_to_project = 5  # Project costs over 5 years
+gpu_costs_over_time = multi_year_projection(0, years_to_project, gpu_total_cost_per_year)
+api_costs_over_time = multi_year_projection(0, years_to_project, api_total_cost_per_year)
+
+print("GPU costs over 5 years: ", gpu_costs_over_time)
+print("API costs over 5 years: ", api_costs_over_time)
+
+
+
+def plot_costs(gpu_costs, api_costs, years):
+    plt.plot(range(years), gpu_costs, label='GPU Costs')
+    plt.plot(range(years), api_costs, label='API Costs')
+    plt.xlabel('Years')
+    plt.ylabel('Total Cost ($)')
+    plt.title('Cost Comparison Over Time')
+    plt.legend()
+    plt.show()
+
+# Call the plotting function
+plot_costs(gpu_costs_over_time, api_costs_over_time, years_to_project)
+
+# Sensitivity Analysis
+# Adjust energy price and see the effect
+energy_price_variation = [energy_price_input * (1 + i * 0.05) for i in range(5)]  # 0%, 5%, 10%, 15%, 20% increase
+costs_with_varied_energy_prices = [gpu_cost(gpu_cost_input, price, gpu_wattage_input, depreciation_rate_input/100, usage_hours_per_year_input, depreciation_years_input) for price in energy_price_variation]
+
+print("Costs with varied energy prices: ", costs_with_varied_energy_prices)

@@ -1,0 +1,306 @@
+Combo Toolboxes:
+Milwaukee Packout 3 Part Combo:
+  Dimensions (LxWxH) for each box: [(22.1, 18.6, 14.9), (22.1, 16.3, 11.1), (22.1, 16.2, 6.5)]
+  Quantity: 1
+  Total Volume: 7.2051 cubic feet
+  Cost: $279
+  Price per cubic foot: $38.7224
+
+Dewalt Tough System 3 Part Combo:
+  Dimensions (LxWxH) for each box: [(21.6, 14.4, 16.7), (21.6, 14.4, 8.9), (21.6, 14.4, 4.5)]
+  Quantity: 1
+  Total Volume: 5.4180 cubic feet
+  Cost: $249
+  Price per cubic foot: $45.9579
+
+Ridgid ProGear 2.0 3 Part Combo:
+  Dimensions (LxWxH) for each box: [(22.2, 19.5, 16), (22.2, 13.25, 12.25), (22.2, 13.25, 6.5)]
+  Quantity: 1
+  Total Volume: 7.2001 cubic feet
+  Cost: $204
+  Price per cubic foot: $28.3331
+
+Husky Build Out 3 Part Combo:
+  Dimensions (LxWxH) for each box: [(22.4, 18.9, 15.5), (22.4, 16.8, 11.7), (22.4, 16.8, 6.5)]
+  Quantity: 1
+  Total Volume: 7.7611 cubic feet
+  Cost: $149
+  Price per cubic foot: $19.1984
+
+Husky Connect 3 Part Combo:
+  Dimensions (LxWxH) for each box: [(22.0, 11.5, 9.0), (22.0, 14.0, 12.0), (22.0, 16.5, 16.5)]
+  Quantity: 1
+  Total Volume: 6.9227 cubic feet
+  Cost: $199
+  Price per cubic foot: $28.7458
+
+ToughBuilt StackTech 3-Piece Storage System:
+  Dimensions (LxWxH) for each box: [(22.3, 19.7, 15.5), (21.0, 16.0, 11.7), (21.0, 16.0, 7.2)]
+  Quantity: 1
+  Total Volume: 7.6156 cubic feet
+  Cost: $299
+  Price per cubic foot: $39.2617
+
+Klein MODbox 3 Part Combo:
+  Dimensions (LxWxH) for each box: [(22.6, 19.9, 15.5), (22, 15.5, 11.7), (22, 15.5, 6.6)]
+  Quantity: 1
+  Total Volume: 7.6454 cubic feet
+  Cost: $319
+  Price per cubic foot: $41.7244
+
+Sorted by price per cubic foot:
+Husky Build Out 3 Part Combo - Price per cubic foot: $19.1984
+Ridgid ProGear 2.0 3 Part Combo - Price per cubic foot: $28.3331
+Husky Connect 3 Part Combo - Price per cubic foot: $28.7458
+Milwaukee Packout 3 Part Combo - Price per cubic foot: $38.7224
+ToughBuilt StackTech 3-Piece Storage System - Price per cubic foot: $39.2617
+Klein MODbox 3 Part Combo - Price per cubic foot: $41.7244
+Dewalt Tough System 3 Part Combo - Price per cubic foot: $45.9579
+
+
+Medium Boxes:
+Milwaukee Packout Medium Box:
+  Dimensions (LxWxH) for each box: [(22.1, 16.3, 11.1)]
+  Quantity: 1
+  Total Volume: 2.3140 cubic feet
+  Cost: $69
+  Price per cubic foot: $29.8188
+
+Dewalt Tough System Medium Box:
+  Dimensions (LxWxH) for each box: [(21.6, 14.4, 8.9)]
+  Quantity: 1
+  Total Volume: 1.6020 cubic feet
+  Cost: $79
+  Price per cubic foot: $49.3134
+
+Ridgid ProGear 2.0 Medium Box:
+  Dimensions (LxWxH) for each box: [(22.2, 13.25, 12.25)]
+  Quantity: 1
+  Total Volume: 2.0853 cubic feet
+  Cost: $59
+  Price per cubic foot: $28.2938
+
+Husky Build Out Medium Box:
+  Dimensions (LxWxH) for each box: [(22.4, 16.8, 11.7)]
+  Quantity: 1
+  Total Volume: 2.5480 cubic feet
+  Cost: $64
+  Price per cubic foot: $25.1177
+
+Husky Connect Medium Box:
+  Dimensions (LxWxH) for each box: [(22.0, 14.0, 12.0)]
+  Quantity: 1
+  Total Volume: 2.1389 cubic feet
+  Cost: $59
+  Price per cubic foot: $27.5844
+
+ToughBuilt StackTech Medium Box:
+  Dimensions (LxWxH) for each box: [(21.0, 16.0, 11.7)]
+  Quantity: 1
+  Total Volume: 2.2750 cubic feet
+  Cost: $89
+  Price per cubic foot: $39.1209
+
+Klein MODbox Medium Box:
+  Dimensions (LxWxH) for each box: [(22, 15.5, 11.7)]
+  Quantity: 1
+  Total Volume: 2.3089 cubic feet
+  Cost: $99
+  Price per cubic foot: $42.8784
+
+Sorted by price per cubic foot:
+Husky Build Out Medium Box - Price per cubic foot: $25.1177
+Husky Connect Medium Box - Price per cubic foot: $27.5844
+Ridgid ProGear 2.0 Medium Box - Price per cubic foot: $28.2938
+Milwaukee Packout Medium Box - Price per cubic foot: $29.8188
+ToughBuilt StackTech Medium Box - Price per cubic foot: $39.1209
+Klein MODbox Medium Box - Price per cubic foot: $42.8784
+Dewalt Tough System Medium Box - Price per cubic foot: $49.3134
+
+
+Small Part Organizers:
+Milwaukee Packout Small Part Organizer:
+  Dimensions (LxWxH) for each box: [(22.1, 11.3, 6.5)]
+  Quantity: 1
+  Total Volume: 0.9394 cubic feet
+  Cost: $49
+  Price per cubic foot: $52.1622
+
+Dewalt Tough System Small Part Organizer:
+  Dimensions (LxWxH) for each box: [(21.6, 14.4, 4.5)]
+  Quantity: 1
+  Total Volume: 0.8100 cubic feet
+  Cost: $59
+  Price per cubic foot: $72.8395
+
+Ridgid ProGear 2.0 Small Part Organizer:
+  Dimensions (LxWxH) for each box: [(22.2, 14.0, 5.9)]
+  Quantity: 1
+  Total Volume: 1.0612 cubic feet
+  Cost: $39
+  Price per cubic foot: $36.7515
+
+Husky Build Out Small Part Organizer:
+  Dimensions (LxWxH) for each box: [(21.5, 16.8, 4.37)]
+  Quantity: 1
+  Total Volume: 0.9135 cubic feet
+  Cost: $33
+  Price per cubic foot: $36.1267
+
+Husky Connect Small Part Organizer:
+  Dimensions (LxWxH) for each box: [(22.0, 11.5, 9.0)]
+  Quantity: 1
+  Total Volume: 1.3177 cubic feet
+  Cost: $39
+  Price per cubic foot: $29.5968
+
+ToughBuilt StackTech Small Part Organizer:
+  Dimensions (LxWxH) for each box: [(21.0, 16.0, 7.2)]
+  Quantity: 1
+  Total Volume: 1.4000 cubic feet
+  Cost: $59
+  Price per cubic foot: $42.1429
+
+Klein MODbox Small Part Organizer:
+  Dimensions (LxWxH) for each box: [(18.5, 12.3, 8.1)]
+  Quantity: 1
+  Total Volume: 1.0666 cubic feet
+  Cost: $69
+  Price per cubic foot: $64.6891
+
+HDX small parts organizer:
+  Dimensions (LxWxH) for each box: [(15, 11.5, 4.7)]
+  Quantity: 1
+  Total Volume: 0.4692 cubic feet
+  Cost: $11
+  Price per cubic foot: $23.4450
+
+Sorted by price per cubic foot:
+HDX small parts organizer - Price per cubic foot: $23.4450
+Husky Connect Small Part Organizer - Price per cubic foot: $29.5968
+Husky Build Out Small Part Organizer - Price per cubic foot: $36.1267
+Ridgid ProGear 2.0 Small Part Organizer - Price per cubic foot: $36.7515
+ToughBuilt StackTech Small Part Organizer - Price per cubic foot: $42.1429
+Milwaukee Packout Small Part Organizer - Price per cubic foot: $52.1622
+Klein MODbox Small Part Organizer - Price per cubic foot: $64.6891
+Dewalt Tough System Small Part Organizer - Price per cubic foot: $72.8395
+
+
+Two-Drawer Boxes:
+Milwaukee Packout Two-Drawer Box:
+  Dimensions (LxWxH) for each box: [(22.1, 16.3, 14.1)]
+  Quantity: 1
+  Total Volume: 2.9394 cubic feet
+  Cost: $156
+  Price per cubic foot: $53.0725
+
+Dewalt Tough System Two-Drawer Box:
+  Dimensions (LxWxH) for each box: [(21.8, 12.4, 12.6)]
+  Quantity: 1
+  Total Volume: 1.9711 cubic feet
+  Cost: $129
+  Price per cubic foot: $65.4462
+
+Ridgid ProGear 2.0 Two-Drawer Box:
+  Dimensions (LxWxH) for each box: [(22.3, 16.2, 15.2)]
+  Quantity: 1
+  Total Volume: 3.1778 cubic feet
+  Cost: $99
+  Price per cubic foot: $31.1541
+
+Husky Build Out Two-Drawer Box:
+  Dimensions (LxWxH) for each box: [(22.2, 14.6, 14.6)]
+  Quantity: 1
+  Total Volume: 2.7385 cubic feet
+  Cost: $124
+  Price per cubic foot: $45.2800
+
+Husky Connect Two-Drawer Box:
+  Dimensions (LxWxH) for each box: [(22.0, 14.0, 13.5)]
+  Quantity: 1
+  Total Volume: 2.4062 cubic feet
+  Cost: $109
+  Price per cubic foot: $45.2987
+
+ToughBuilt StackTech Two-Drawer Box:
+  Dimensions (LxWxH) for each box: [(21.0, 16.0, 13.8)]
+  Quantity: 1
+  Total Volume: 2.6833 cubic feet
+  Cost: $149
+  Price per cubic foot: $55.5280
+
+Klein MODbox Two-Drawer Box:
+  Dimensions (LxWxH) for each box: [(21.6, 15.3, 13.6)]
+  Quantity: 1
+  Total Volume: 2.6010 cubic feet
+  Cost: $159
+  Price per cubic foot: $61.1303
+
+Sorted by price per cubic foot:
+Ridgid ProGear 2.0 Two-Drawer Box - Price per cubic foot: $31.1541
+Husky Build Out Two-Drawer Box - Price per cubic foot: $45.2800
+Husky Connect Two-Drawer Box - Price per cubic foot: $45.2987
+Milwaukee Packout Two-Drawer Box - Price per cubic foot: $53.0725
+ToughBuilt StackTech Two-Drawer Box - Price per cubic foot: $55.5280
+Klein MODbox Two-Drawer Box - Price per cubic foot: $61.1303
+Dewalt Tough System Two-Drawer Box - Price per cubic foot: $65.4462
+
+
+Small Boxes:
+Milwaukee Packout Small Box:
+  Dimensions (LxWxH) for each box: [(22.1, 11.3, 6.5)]
+  Quantity: 1
+  Total Volume: 0.9394 cubic feet
+  Cost: $59
+  Price per cubic foot: $62.8075
+
+Dewalt Tough System Small Box:
+  Dimensions (LxWxH) for each box: [(21.6, 14.4, 4.5)]
+  Quantity: 1
+  Total Volume: 0.8100 cubic feet
+  Cost: $69
+  Price per cubic foot: $85.1852
+
+Ridgid ProGear 2.0 Small Box:
+  Dimensions (LxWxH) for each box: [(22.2, 13.25, 6.5)]
+  Quantity: 1
+  Total Volume: 1.1065 cubic feet
+  Cost: $49
+  Price per cubic foot: $44.2851
+
+Husky Build Out Small Box:
+  Dimensions (LxWxH) for each box: [(21.5, 16.8, 4.37)]
+  Quantity: 1
+  Total Volume: 0.9135 cubic feet
+  Cost: $39
+  Price per cubic foot: $42.6952
+
+Husky Connect Small Box:
+  Dimensions (LxWxH) for each box: [(22.0, 11.5, 9.0)]
+  Quantity: 1
+  Total Volume: 1.3177 cubic feet
+  Cost: $49
+  Price per cubic foot: $37.1858
+
+ToughBuilt StackTech Small Box:
+  Dimensions (LxWxH) for each box: [(21.0, 16.0, 7.2)]
+  Quantity: 1
+  Total Volume: 1.4000 cubic feet
+  Cost: $69
+  Price per cubic foot: $49.2857
+
+Klein MODbox Small Box:
+  Dimensions (LxWxH) for each box: [(18.5, 12.3, 8.1)]
+  Quantity: 1
+  Total Volume: 1.0666 cubic feet
+  Cost: $79
+  Price per cubic foot: $74.0643
+
+Sorted by price per cubic foot:
+Husky Connect Small Box - Price per cubic foot: $37.1858
+Husky Build Out Small Box - Price per cubic foot: $42.6952
+Ridgid ProGear 2.0 Small Box - Price per cubic foot: $44.2851
+ToughBuilt StackTech Small Box - Price per cubic foot: $49.2857
+Milwaukee Packout Small Box - Price per cubic foot: $62.8075
+Klein MODbox Small Box - Price per cubic foot: $74.0643
+Dewalt Tough System Small Box - Price per cubic foot: $85.1852

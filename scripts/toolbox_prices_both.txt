@@ -1,0 +1,43 @@
+Combo Toolboxes:
+Milwaukee Packout 3 Part Combo:
+  Dimensions (LxWxH) for each box: [(22.1, 18.6, 14.9), (22.1, 16.3, 11.1), (22.1, 16.2, 6.5)]
+  Total Volume (Exterior): 7.2051 cubic feet
+  Price per cubic foot (Exterior): $38.7224
+  Interior Dimensions (LxWxH) for each box: [(19.1, 14.6, 13.9), (19.7, 13.2, 8.5), (19.1, 14.6, 3.9)]
+  Total Volume (Interior): 4.1516 cubic feet
+  Price per cubic foot (Interior): $67.2022
+
+Klein MODbox 3 Part Combo:
+  Dimensions (LxWxH) for each box: [(22.6, 19.9, 15.5), (22, 15.5, 11.7), (22, 15.5, 6.6)]
+  Total Volume (Exterior): 7.6454 cubic feet
+  Price per cubic foot (Exterior): $41.7244
+  Interior Dimensions (LxWxH) for each box: [(19.6, 13.6, 13.4), (19.1, 13.6, 9.2), (19.7, 13.2, 4.5)]
+  Total Volume (Interior): 4.1272 cubic feet
+  Price per cubic foot (Interior): $77.2913
+
+Husky Build Out 3 Part Combo:
+  Dimensions (LxWxH) for each box: [(22.4, 18.9, 15.5), (22.4, 16.8, 11.7), (22.4, 16.8, 6.5)]
+  Total Volume (Exterior): 7.7611 cubic feet
+  Price per cubic foot (Exterior): $19.1984
+  Interior Dimensions (LxWxH) for each box: [(18.5, 13.4, 14.3), (18.5, 12.9, 9.0), (20.1, 13.2, 4.0)]
+  Total Volume (Interior): 3.9086 cubic feet
+  Price per cubic foot (Interior): $38.1208
+
+Ridgid ProGear 2.0 3 Part Combo:
+  Dimensions (LxWxH) for each box: [(22.2, 19.5, 16), (22.2, 13.25, 12.25), (22.2, 13.25, 6.5)]
+  Total Volume (Exterior): 7.2001 cubic feet
+  Price per cubic foot (Exterior): $28.3331
+  Interior Dimensions (LxWxH) for each box: [(19.5, 12, 14), (19.5, 11, 10.2), (19.5, 11, 4.25)]
+  Total Volume (Interior): 3.6895 cubic feet
+  Price per cubic foot (Interior): $55.2914
+
+Sorted by price per cubic foot (Interior):
+Husky Build Out 3 Part Combo - Price per cubic foot (Interior): $38.1208
+Ridgid ProGear 2.0 3 Part Combo - Price per cubic foot (Interior): $55.2914
+Milwaukee Packout 3 Part Combo - Price per cubic foot (Interior): $67.2022
+Klein MODbox 3 Part Combo - Price per cubic foot (Interior): $77.2913
+Sorted by price per cubic foot (Exterior):
+Husky Build Out 3 Part Combo - Price per cubic foot (Exterior): $19.1984
+Ridgid ProGear 2.0 3 Part Combo - Price per cubic foot (Exterior): $28.3331
+Milwaukee Packout 3 Part Combo - Price per cubic foot (Exterior): $38.7224
+Klein MODbox 3 Part Combo - Price per cubic foot (Exterior): $41.7244
