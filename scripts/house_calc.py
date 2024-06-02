@@ -45,9 +45,9 @@ def generate_amortization_schedule(principal, annual_rate, years):
 
 
 # Parameters
-home_price_down_payment = 600000  # Home price in the down payment scenario
+home_price_down_payment = 450000  # Home price in the down payment scenario
 down_payment_amount = 90000  # Down payment amount
-home_price_no_down_payment = 600000  # Home price in the no down payment scenario
+home_price_no_down_payment = 450000  # Home price in the no down payment scenario
 annual_interest_rate_down_payment = (
     6.0  # Annual interest rate for down payment scenario
 )
@@ -140,7 +140,7 @@ plt.ylabel("Cumulative Extra Payments ($)")
 plt.title("Cumulative Extra Payments vs Down Payment Amount")
 plt.legend()
 plt.grid(True)
-plt.savefig(os.path.join(output_dir, "cumulative_extra_payments.png"))
+plt.savefig(os.path.join(output_dir, "cumulative_extra_payments_450.png"))
 plt.show()
 
 # Display the break-even point
@@ -154,12 +154,14 @@ schedule_no_down_payment_markdown = schedule_no_down_payment.head(24).to_markdow
     index=False
 )
 
-with open(os.path.join(output_dir, "amortization_schedule_down_payment.md"), "w") as f:
+with open(
+    os.path.join(output_dir, "amortization_schedule_down_payment_450.md"), "w"
+) as f:
     f.write("# Amortization Schedule - Down Payment Scenario\n\n")
     f.write(schedule_down_payment_markdown)
 
 with open(
-    os.path.join(output_dir, "amortization_schedule_no_down_payment.md"), "w"
+    os.path.join(output_dir, "amortization_schedule_no_down_payment_450.md"), "w"
 ) as f:
     f.write("# Amortization Schedule - No Down Payment Scenario\n\n")
     f.write(schedule_no_down_payment_markdown)
